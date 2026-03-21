@@ -10,6 +10,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -107,8 +108,9 @@ object DevicePowerWidgetSyncScheduler {
     private const val periodicWorkName = "device_power_widget_periodic_sync"
     private const val immediateWorkName = "device_power_widget_immediate_sync"
     const val actionPollingWindowMillis: Long = 10 * 60 * 1000
-    private const val actionPollingInitialDelaySeconds = 6L
-    const val actionPollingIntervalSeconds = 15L
+    const val actionPollingMinimumDurationMillis: Long = 30 * 1000
+    private const val actionPollingInitialDelaySeconds = 5L
+    const val actionPollingIntervalSeconds = 5L
 
     fun ensurePeriodic(context: Context) {
         if (!hasWidgets(context)) {
@@ -156,10 +158,14 @@ object DevicePowerWidgetSyncScheduler {
             return
         }
 
-        val request = OneTimeWorkRequestBuilder<DevicePowerWidgetSyncWorker>()
+        val requestBuilder = OneTimeWorkRequestBuilder<DevicePowerWidgetSyncWorker>()
             .setConstraints(defaultConstraints())
-            .setInitialDelay(delaySeconds, TimeUnit.SECONDS)
-            .build()
+        if (delaySeconds > 0) {
+            requestBuilder.setInitialDelay(delaySeconds, TimeUnit.SECONDS)
+        } else {
+            requestBuilder.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+        }
+        val request = requestBuilder.build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(
             immediateWorkName,

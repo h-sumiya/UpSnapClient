@@ -20,6 +20,7 @@ import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
@@ -93,17 +94,28 @@ internal data class StoredWidgetDevice(
     val error: String?,
     val lastSyncedAt: Long,
     val actionPollingSourceStatusRaw: String? = null,
+    val actionPollingTargetStatusRaw: String? = null,
+    val actionPollingStartedAt: Long = 0L,
     val actionPollingDeadlineAt: Long = 0L,
 ) {
     val actionPollingSourceStatus: DevicePowerStatus?
         get() = actionPollingSourceStatusRaw?.let(DevicePowerStatus::fromRaw)
 
+    val actionPollingTargetStatus: DevicePowerStatus?
+        get() = actionPollingTargetStatusRaw?.let(DevicePowerStatus::fromRaw)
+
     fun shouldContinueActionPolling(
         now: Long,
         observedStatus: DevicePowerStatus,
     ): Boolean {
-        val sourceStatus = actionPollingSourceStatus ?: return false
-        return actionPollingDeadlineAt > now && observedStatus == sourceStatus
+        val targetStatus = actionPollingTargetStatus ?: return false
+        if (actionPollingDeadlineAt <= now) {
+            return false
+        }
+
+        val minimumPollingEndsAt = actionPollingStartedAt +
+            DevicePowerWidgetSyncScheduler.actionPollingMinimumDurationMillis
+        return now < minimumPollingEndsAt || observedStatus != targetStatus
     }
 
     fun fallbackStatusOnError(): DevicePowerStatus = actionPollingSourceStatus ?: status
@@ -119,6 +131,8 @@ internal object DevicePowerWidgetState {
     private val errorKey = stringPreferencesKey("error")
     private val lastSyncedAtKey = longPreferencesKey("last_synced_at")
     private val actionPollingSourceStatusKey = stringPreferencesKey("action_polling_source_status")
+    private val actionPollingTargetStatusKey = stringPreferencesKey("action_polling_target_status")
+    private val actionPollingStartedAtKey = longPreferencesKey("action_polling_started_at")
     private val actionPollingDeadlineAtKey = longPreferencesKey("action_polling_deadline_at")
 
     suspend fun read(context: Context, glanceId: GlanceId): StoredWidgetDevice =
@@ -212,6 +226,8 @@ internal object DevicePowerWidgetState {
         context: Context,
         glanceId: GlanceId,
         sourceStatus: DevicePowerStatus,
+        targetStatus: DevicePowerStatus,
+        actionPollingStartedAt: Long,
         actionPollingDeadlineAt: Long,
     ) {
         updateAppWidgetState(context, glanceId) { prefs: MutablePreferences ->
@@ -219,6 +235,8 @@ internal object DevicePowerWidgetState {
             prefs[busyKey] = true
             prefs.remove(errorKey)
             prefs[actionPollingSourceStatusKey] = sourceStatus.rawValue
+            prefs[actionPollingTargetStatusKey] = targetStatus.rawValue
+            prefs[actionPollingStartedAtKey] = actionPollingStartedAt
             prefs[actionPollingDeadlineAtKey] = actionPollingDeadlineAt
         }
     }
@@ -242,6 +260,9 @@ internal object DevicePowerWidgetState {
             lastSyncedAt = this[lastSyncedAtKey] ?: 0L,
             actionPollingSourceStatusRaw =
                 this[actionPollingSourceStatusKey]?.takeIf(String::isNotBlank),
+            actionPollingTargetStatusRaw =
+                this[actionPollingTargetStatusKey]?.takeIf(String::isNotBlank),
+            actionPollingStartedAt = this[actionPollingStartedAtKey] ?: 0L,
             actionPollingDeadlineAt = this[actionPollingDeadlineAtKey] ?: 0L,
         )
     }
@@ -250,7 +271,18 @@ internal object DevicePowerWidgetState {
 
     private fun clearActionPolling(prefs: MutablePreferences) {
         prefs.remove(actionPollingSourceStatusKey)
+        prefs.remove(actionPollingTargetStatusKey)
+        prefs.remove(actionPollingStartedAtKey)
         prefs.remove(actionPollingDeadlineAtKey)
+    }
+}
+
+internal object DevicePowerWidgetInstances {
+    suspend fun glanceIdsForDevice(context: Context, deviceId: String): List<GlanceId> {
+        val manager = GlanceAppWidgetManager(context)
+        return manager.getGlanceIds(DevicePowerWidget::class.java).filter { glanceId ->
+            DevicePowerWidgetState.read(context, glanceId).deviceId == deviceId
+        }
     }
 }
 
@@ -492,7 +524,7 @@ class ToggleDevicePowerAction : ActionCallback {
         val repository = DevicePowerWidgetRepository(context)
 
         if (state.status == DevicePowerStatus.PENDING) {
-            DevicePowerWidgetSyncScheduler.enqueueActionPolling(context, delaySeconds = 8)
+            DevicePowerWidgetSyncScheduler.enqueueImmediate(context)
             return
         }
 
@@ -501,14 +533,30 @@ class ToggleDevicePowerAction : ActionCallback {
             return
         }
 
-        DevicePowerWidgetState.setPending(
-            context = context,
-            glanceId = glanceId,
-            sourceStatus = state.status,
-            actionPollingDeadlineAt = System.currentTimeMillis() +
+        val targetStatus = when (state.status) {
+            DevicePowerStatus.ONLINE -> DevicePowerStatus.OFFLINE
+            DevicePowerStatus.OFFLINE -> DevicePowerStatus.ONLINE
+            DevicePowerStatus.PENDING,
+            DevicePowerStatus.UNKNOWN,
+            -> null
+        } ?: return
+
+        val now = System.currentTimeMillis()
+        val targetGlanceIds = DevicePowerWidgetInstances.glanceIdsForDevice(context, deviceId)
+            .ifEmpty { listOf(glanceId) }
+
+        targetGlanceIds.forEach { targetGlanceId ->
+            DevicePowerWidgetState.setPending(
+                context = context,
+                glanceId = targetGlanceId,
+                sourceStatus = state.status,
+                targetStatus = targetStatus,
+                actionPollingStartedAt = now,
+                actionPollingDeadlineAt = now +
                 DevicePowerWidgetSyncScheduler.actionPollingWindowMillis,
-        )
-        DevicePowerWidget().update(context, glanceId)
+            )
+        }
+        DevicePowerWidget().updateAll(context)
 
         runCatching {
             repository.togglePower(
@@ -517,7 +565,7 @@ class ToggleDevicePowerAction : ActionCallback {
                 shutdownSupported = state.shutdownSupported,
             )
         }.onSuccess {
-            DevicePowerWidgetSyncScheduler.enqueueActionPolling(context)
+            DevicePowerWidgetSyncScheduler.enqueueImmediate(context)
         }.onFailure { error ->
             val message = when (error) {
                 is ShutdownUnavailableException ->
@@ -526,13 +574,15 @@ class ToggleDevicePowerAction : ActionCallback {
                     context.getString(R.string.widget_sign_in_required)
                 else -> context.getString(R.string.widget_sync_error)
             }
-            DevicePowerWidgetState.markError(
-                context = context,
-                glanceId = glanceId,
-                message = message,
-                fallbackStatus = state.status,
-            )
-            DevicePowerWidget().update(context, glanceId)
+            targetGlanceIds.forEach { targetGlanceId ->
+                DevicePowerWidgetState.markError(
+                    context = context,
+                    glanceId = targetGlanceId,
+                    message = message,
+                    fallbackStatus = state.status,
+                )
+            }
+            DevicePowerWidget().updateAll(context)
         }
     }
 }
