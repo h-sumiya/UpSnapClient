@@ -3,6 +3,8 @@
     <string name="app_name">UpSnap</string>
     <string name="device_power_widget_name">UpSnap Device Power</string>
     <string name="device_power_widget_description">Single-device power widget</string>
+    <string name="device_power_icon_widget_name">UpSnap Power Button</string>
+    <string name="device_power_icon_widget_description">Single-device power button widget</string>
     <string name="widget_status_online">Online</string>
     <string name="widget_status_offline">Offline</string>
     <string name="widget_status_pending">Pending</string>

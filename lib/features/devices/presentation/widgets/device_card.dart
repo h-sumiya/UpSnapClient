@@ -300,9 +300,14 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
+      final type = await _selectWidgetType();
+      if (type == null || !mounted) {
+        return;
+      }
+
       final added = await ref
           .read(deviceWidgetServiceProvider)
-          .pinDeviceWidget(widget.device);
+          .pinDeviceWidget(widget.device, type: type);
       if (!mounted) {
         return;
       }
@@ -324,6 +329,59 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
       }
       messenger.showSnackBar(SnackBar(content: Text(errorMessage(error))));
     }
+  }
+
+  Future<DeviceWidgetType?> _selectWidgetType() {
+    return showModalBottomSheet<DeviceWidgetType>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final theme = Theme.of(context);
+        final l10n = context.l10n;
+        final powerColor = _statusColor(widget.device.status);
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.tr('Choose widget style'),
+                  style: theme.textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.tr('Select how the Android widget should look.'),
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                _WidgetTypeOptionTile(
+                  title: l10n.tr('Widget with device name'),
+                  subtitle: l10n.tr(
+                    'Shows the device name and current status.',
+                  ),
+                  preview: _WidgetNamePreview(deviceName: widget.device.name),
+                  onTap: () =>
+                      Navigator.of(context).pop(DeviceWidgetType.labeled),
+                ),
+                const SizedBox(height: 12),
+                _WidgetTypeOptionTile(
+                  title: l10n.tr('Power icon only'),
+                  subtitle: l10n.tr(
+                    'Shows only the power button with status color.',
+                  ),
+                  preview: _WidgetIconPreview(color: powerColor),
+                  onTap: () =>
+                      Navigator.of(context).pop(DeviceWidgetType.powerIcon),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   String _powerActionTooltip(BuildContext context, DeviceStatus status) {
@@ -447,6 +505,125 @@ class _PowerIconButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _WidgetTypeOptionTile extends StatelessWidget {
+  const _WidgetTypeOptionTile({
+    required this.title,
+    required this.subtitle,
+    required this.preview,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget preview;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              preview,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WidgetNamePreview extends StatelessWidget {
+  const _WidgetNamePreview({required this.deviceName});
+
+  final String deviceName;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: 72,
+      height: 72,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7F9),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            deviceName,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium,
+          ),
+          const Spacer(),
+          Container(
+            width: double.infinity,
+            height: 24,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F7EE),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.power_settings_new_rounded,
+              size: 16,
+              color: Color(0xFF166534),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WidgetIconPreview extends StatelessWidget {
+  const _WidgetIconPreview({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7F9),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: _PowerIconButton(
+        color: color,
+        isBusy: false,
+        onTap: null,
+        tooltip: '',
       ),
     );
   }

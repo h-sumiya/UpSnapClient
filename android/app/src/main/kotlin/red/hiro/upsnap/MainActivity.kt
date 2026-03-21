@@ -6,6 +6,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import red.hiro.upsnap.widget.DevicePowerWidgetPinner
 import red.hiro.upsnap.widget.DevicePowerWidgetSyncScheduler
+import red.hiro.upsnap.widget.WidgetDisplayType
 
 class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -19,17 +20,22 @@ class MainActivity : FlutterActivity() {
                 "pinDeviceWidget" -> {
                     val deviceId = call.argument<String>("deviceId")
                     val deviceName = call.argument<String>("deviceName")
+                    val widgetType = WidgetDisplayType.fromRaw(call.argument<String>("widgetType"))
                     if (deviceId.isNullOrBlank() || deviceName.isNullOrBlank()) {
                         result.error("invalid_args", "deviceId and deviceName are required", null)
                         return@setMethodCallHandler
                     }
 
-                    Log.d("DevicePowerWidget", "pinDeviceWidget request deviceId=$deviceId deviceName=$deviceName")
+                    Log.d(
+                        "DevicePowerWidget",
+                        "pinDeviceWidget request deviceId=$deviceId deviceName=$deviceName widgetType=${widgetType.rawValue}",
+                    )
                     result.success(
                         DevicePowerWidgetPinner.requestPin(
                             context = this,
                             deviceId = deviceId,
                             deviceName = deviceName,
+                            widgetType = widgetType,
                         ),
                     )
                 }

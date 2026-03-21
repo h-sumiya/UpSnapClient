@@ -8,6 +8,15 @@ final deviceWidgetServiceProvider = Provider<DeviceWidgetService>(
   (ref) => const DeviceWidgetService(),
 );
 
+enum DeviceWidgetType {
+  labeled('labeled'),
+  powerIcon('power_icon');
+
+  const DeviceWidgetType(this.platformValue);
+
+  final String platformValue;
+}
+
 class DeviceWidgetService {
   const DeviceWidgetService();
 
@@ -16,7 +25,10 @@ class DeviceWidgetService {
   bool get isSupportedPlatform =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-  Future<bool> pinDeviceWidget(DeviceModel device) async {
+  Future<bool> pinDeviceWidget(
+    DeviceModel device, {
+    required DeviceWidgetType type,
+  }) async {
     if (!isSupportedPlatform) {
       return false;
     }
@@ -24,6 +36,7 @@ class DeviceWidgetService {
     final result = await _channel.invokeMethod<bool>('pinDeviceWidget', {
       'deviceId': device.id,
       'deviceName': device.name,
+      'widgetType': type.platformValue,
     });
     return result ?? false;
   }

@@ -25,7 +25,11 @@ class DevicePowerWidgetPinReceiver : BroadcastReceiver() {
 
         val deviceId = DevicePowerWidgetPinner.readDeviceId(intent) ?: return
         val deviceName = DevicePowerWidgetPinner.readDeviceName(intent) ?: return
-        Log.d("DevicePowerWidget", "PinReceiver binding deviceId=$deviceId deviceName=$deviceName widgetId=$appWidgetId")
+        val widgetType = DevicePowerWidgetPinner.readWidgetType(intent)
+        Log.d(
+            "DevicePowerWidget",
+            "PinReceiver binding deviceId=$deviceId deviceName=$deviceName widgetId=$appWidgetId widgetType=${widgetType.rawValue}",
+        )
 
         runBlocking {
             val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
@@ -34,6 +38,7 @@ class DevicePowerWidgetPinReceiver : BroadcastReceiver() {
                 glanceId = glanceId,
                 deviceId = deviceId,
                 deviceName = deviceName,
+                widgetType = widgetType,
             )
             DevicePowerWidget().update(context, glanceId)
         }

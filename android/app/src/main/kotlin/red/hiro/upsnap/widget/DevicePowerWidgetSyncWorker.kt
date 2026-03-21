@@ -1,7 +1,6 @@
 package red.hiro.upsnap.widget
 
 import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.content.Context
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.updateAll
@@ -26,10 +25,7 @@ class DevicePowerWidgetSyncWorker(
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result = coroutineScope {
         val glanceManager = GlanceAppWidgetManager(applicationContext)
-        val appWidgetManager = AppWidgetManager.getInstance(applicationContext)
-        val widgetIds = appWidgetManager.getAppWidgetIds(
-            ComponentName(applicationContext, DevicePowerWidgetReceiver::class.java),
-        )
+        val widgetIds = DevicePowerWidgetProviders.appWidgetIds(applicationContext)
         if (widgetIds.isEmpty()) {
             DevicePowerWidgetSyncScheduler.cancelAll(applicationContext)
             return@coroutineScope Result.success()
@@ -152,10 +148,7 @@ object DevicePowerWidgetSyncScheduler {
     }
 
     fun hasWidgets(context: Context): Boolean {
-        val ids = AppWidgetManager.getInstance(context).getAppWidgetIds(
-            ComponentName(context, DevicePowerWidgetReceiver::class.java),
-        )
-        return ids.isNotEmpty()
+        return DevicePowerWidgetProviders.hasWidgets(context)
     }
 
     private fun enqueue(context: Context, delaySeconds: Long) {

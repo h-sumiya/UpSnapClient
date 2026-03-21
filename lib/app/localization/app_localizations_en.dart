@@ -22,6 +22,7 @@ const Map<String, String> appStringsEn = <String, String>{
   'Confirm': 'Confirm',
   'Confirm the launcher prompt to place the widget.':
       'Confirm the launcher prompt to place the widget.',
+  'Choose widget style': 'Choose widget style',
   'Confirm password': 'Confirm password',
   'Connect to UpSnap': 'Connect to UpSnap',
   'Connection': 'Connection',
@@ -107,6 +108,7 @@ const Map<String, String> appStringsEn = <String, String>{
   'Port number': 'Port number',
   'Ports': 'Ports',
   'Power': 'Power',
+  'Power icon only': 'Power icon only',
   'Profile': 'Profile',
   'Read': 'Read',
   'Refresh': 'Refresh',
@@ -134,6 +136,8 @@ const Map<String, String> appStringsEn = <String, String>{
   'Added': 'Added',
   'Search devices': 'Search devices',
   'Select favicon': 'Select favicon',
+  'Select how the Android widget should look.':
+      'Select how the Android widget should look.',
   'Server': 'Server',
   'Server URL': 'Server URL',
   'Set up {appName}': 'Set up {appName}',
@@ -176,7 +180,12 @@ const Map<String, String> appStringsEn = <String, String>{
   'Wake timeout (seconds)': 'Wake timeout (seconds)',
   'Wake {name}?': 'Wake {name}?',
   'Website title': 'Website title',
+  'Widget with device name': 'Widget with device name',
   'Widget pinning is not available here.':
       'Widget pinning is not available here.',
+  'Shows the device name and current status.':
+      'Shows the device name and current status.',
+  'Shows only the power button with status color.':
+      'Shows only the power button with status color.',
   '{name} added.': '{name} added.',
 };

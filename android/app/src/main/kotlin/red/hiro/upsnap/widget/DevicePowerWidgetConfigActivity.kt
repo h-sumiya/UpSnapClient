@@ -26,6 +26,7 @@ class DevicePowerWidgetConfigActivity : Activity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
+    private var selectedWidgetType = WidgetDisplayType.LABELED
     private lateinit var progressView: ProgressBar
     private lateinit var messageView: TextView
     private lateinit var listView: ListView
@@ -54,6 +55,13 @@ class DevicePowerWidgetConfigActivity : Activity() {
 
         val pinnedDeviceId = DevicePowerWidgetPinner.readDeviceId(intent)
         val pinnedDeviceName = DevicePowerWidgetPinner.readDeviceName(intent)
+        selectedWidgetType =
+            if (DevicePowerWidgetPinner.hasWidgetType(intent)) {
+                DevicePowerWidgetPinner.readWidgetType(intent)
+            } else {
+                DevicePowerWidgetPinner.inferWidgetType(this, appWidgetId)
+                    ?: WidgetDisplayType.LABELED
+            }
         loadDevices(
             preselectedDeviceId = pinnedDeviceId,
             preselectedDeviceName = pinnedDeviceName,
@@ -148,6 +156,7 @@ class DevicePowerWidgetConfigActivity : Activity() {
                 glanceId = glanceId,
                 deviceId = snapshot.id,
                 deviceName = snapshot.name,
+                widgetType = selectedWidgetType,
             )
             DevicePowerWidgetState.writeSnapshot(
                 context = this@DevicePowerWidgetConfigActivity,

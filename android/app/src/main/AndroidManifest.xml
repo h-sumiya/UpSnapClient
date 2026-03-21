@@ -34,6 +34,7 @@
             android:value="2" />
         <receiver
             android:name=".widget.DevicePowerWidgetReceiver"
+            android:label="@string/device_power_widget_name"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -42,6 +43,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/device_power_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.DevicePowerIconWidgetReceiver"
+            android:label="@string/device_power_icon_widget_name"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/device_power_icon_widget_info" />
         </receiver>
         <receiver
             android:name=".widget.DevicePowerWidgetPinReceiver"

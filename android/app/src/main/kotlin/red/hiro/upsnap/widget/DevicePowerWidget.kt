@@ -20,7 +20,6 @@ import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
@@ -66,6 +65,17 @@ internal enum class DevicePowerStatus(val rawValue: String) {
     }
 }
 
+enum class WidgetDisplayType(val rawValue: String) {
+    LABELED("labeled"),
+    POWER_ICON("power_icon"),
+    ;
+
+    companion object {
+        fun fromRaw(value: String?): WidgetDisplayType =
+            entries.firstOrNull { it.rawValue == value } ?: LABELED
+    }
+}
+
 internal data class WidgetSnapshot(
     val id: String,
     val name: String,
@@ -76,6 +86,7 @@ internal data class WidgetSnapshot(
 internal data class StoredWidgetDevice(
     val deviceId: String?,
     val deviceName: String,
+    val widgetType: WidgetDisplayType,
     val status: DevicePowerStatus,
     val shutdownSupported: Boolean,
     val isBusy: Boolean,
@@ -101,6 +112,7 @@ internal data class StoredWidgetDevice(
 internal object DevicePowerWidgetState {
     private val deviceIdKey = stringPreferencesKey("device_id")
     private val deviceNameKey = stringPreferencesKey("device_name")
+    private val widgetTypeKey = stringPreferencesKey("widget_type")
     private val statusKey = stringPreferencesKey("status")
     private val shutdownSupportedKey = booleanPreferencesKey("shutdown_supported")
     private val busyKey = booleanPreferencesKey("busy")
@@ -124,10 +136,12 @@ internal object DevicePowerWidgetState {
         glanceId: GlanceId,
         deviceId: String,
         deviceName: String,
+        widgetType: WidgetDisplayType,
     ) {
         updateAppWidgetState(context, glanceId) { prefs: MutablePreferences ->
             prefs[deviceIdKey] = deviceId
             prefs[deviceNameKey] = deviceName
+            prefs[widgetTypeKey] = widgetType.rawValue
             prefs[statusKey] = DevicePowerStatus.UNKNOWN.rawValue
             prefs[shutdownSupportedKey] = false
             prefs[busyKey] = false
@@ -220,6 +234,7 @@ internal object DevicePowerWidgetState {
         return StoredWidgetDevice(
             deviceId = this[deviceIdKey],
             deviceName = name,
+            widgetType = WidgetDisplayType.fromRaw(this[widgetTypeKey]),
             status = DevicePowerStatus.fromRaw(this[statusKey]),
             shutdownSupported = this[shutdownSupportedKey] == true,
             isBusy = this[busyKey] == true,
@@ -240,12 +255,7 @@ internal object DevicePowerWidgetState {
 }
 
 class DevicePowerWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(
-        setOf(
-            DpSize(132.dp, 132.dp),
-            DpSize(192.dp, 110.dp),
-        ),
-    )
+    override val sizeMode = SizeMode.Responsive(setOf(DpSize(72.dp, 72.dp), DpSize(132.dp, 132.dp), DpSize(192.dp, 110.dp)))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
@@ -263,84 +273,147 @@ class DevicePowerWidget : GlanceAppWidget() {
                 contextLocal.getString(R.string.device_power_widget_name)
             }
             val supportingText = supportingText(contextLocal, state)
-
-            Column(
-                modifier = GlanceModifier
+            val rootModifier = if (state.widgetType == WidgetDisplayType.POWER_ICON) {
+                GlanceModifier.fillMaxSize()
+            } else {
+                GlanceModifier
                     .fillMaxSize()
                     .background(ColorProvider(Color(0xFFF5F7F9)))
                     .cornerRadius(24.dp)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.Vertical.Top,
-                horizontalAlignment = Alignment.Horizontal.Start,
+            }
+
+            Box(
+                modifier = rootModifier,
+                contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Vertical.CenterVertically,
-                ) {
-                    Text(
-                        text = deviceName,
-                        maxLines = 2,
-                        style = TextStyle(
-                            color = ColorProvider(Color(0xFF0F172A)),
-                            fontWeight = FontWeight.Medium,
-                            fontSize = if (compact) 15.sp else 16.sp,
-                        ),
+                if (state.widgetType == WidgetDisplayType.POWER_ICON) {
+                    PowerIconOnlyWidget(
+                        compact = compact,
+                        palette = palette,
+                        action = action,
+                        actionLabel = actionLabel(contextLocal, state),
                     )
-                    Spacer(modifier = GlanceModifier.width(12.dp))
-                    Box(
-                        modifier = GlanceModifier
-                            .size(12.dp)
-                            .background(ColorProvider(palette.accent))
-                            .cornerRadius(99.dp),
-                    ) {}
+                } else {
+                    LabeledPowerWidget(
+                        compact = compact,
+                        deviceName = deviceName,
+                        supportingText = supportingText,
+                        palette = palette,
+                        action = action,
+                        actionLabel = actionLabel(contextLocal, state),
+                    )
                 }
-                Spacer(modifier = GlanceModifier.height(if (compact) 10.dp else 14.dp))
-                var powerModifier = GlanceModifier
-                    .fillMaxWidth()
-                    .height(if (compact) 92.dp else 108.dp)
-                    .background(ColorProvider(palette.panel))
-                    .cornerRadius(22.dp)
-                    .padding(14.dp)
-                if (action != null) {
-                    powerModifier = powerModifier.clickable(action)
-                }
-                Box(
-                    modifier = powerModifier,
-                    contentAlignment = Alignment.Center,
-                ) {
-                    val iconSize = if (compact) 30.dp else 36.dp
-                    Column(
-                        verticalAlignment = Alignment.Vertical.CenterVertically,
-                        horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
-                    ) {
-                        Image(
-                            provider = ImageProvider(android.R.drawable.ic_lock_power_off),
-                            contentDescription = actionLabel(contextLocal, state),
-                            modifier = GlanceModifier.size(iconSize),
-                            colorFilter = ColorFilter.tint(ColorProvider(palette.icon)),
-                            contentScale = ContentScale.Fit,
-                        )
-                        Spacer(modifier = GlanceModifier.height(8.dp))
-                        Text(
-                            text = actionLabel(contextLocal, state).uppercase(Locale.getDefault()),
-                            style = TextStyle(
-                                color = ColorProvider(palette.icon),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                            ),
-                        )
-                    }
-                }
-                Spacer(modifier = GlanceModifier.height(10.dp))
+            }
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun LabeledPowerWidget(
+        compact: Boolean,
+        deviceName: String,
+        supportingText: String,
+        palette: WidgetPalette,
+        action: androidx.glance.action.Action?,
+        actionLabel: String,
+    ) {
+        Column(
+            modifier = GlanceModifier.padding(16.dp),
+            verticalAlignment = Alignment.Vertical.Top,
+            horizontalAlignment = Alignment.Horizontal.Start,
+        ) {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Vertical.CenterVertically,
+            ) {
                 Text(
-                    text = supportingText,
+                    text = deviceName,
                     maxLines = 2,
                     style = TextStyle(
-                        color = ColorProvider(Color(0xFF475569)),
-                        fontSize = 12.sp,
+                        color = ColorProvider(Color(0xFF0F172A)),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = if (compact) 15.sp else 16.sp,
                     ),
                 )
+                Spacer(modifier = GlanceModifier.width(12.dp))
+                Box(
+                    modifier = GlanceModifier
+                        .size(12.dp)
+                        .background(ColorProvider(palette.accent))
+                        .cornerRadius(99.dp),
+                ) {}
             }
+            Spacer(modifier = GlanceModifier.height(if (compact) 10.dp else 14.dp))
+            var powerModifier = GlanceModifier
+                .fillMaxWidth()
+                .height(if (compact) 92.dp else 108.dp)
+                .background(ColorProvider(palette.panel))
+                .cornerRadius(22.dp)
+                .padding(14.dp)
+            if (action != null) {
+                powerModifier = powerModifier.clickable(action)
+            }
+            Box(
+                modifier = powerModifier,
+                contentAlignment = Alignment.Center,
+            ) {
+                val iconSize = if (compact) 30.dp else 36.dp
+                Column(
+                    verticalAlignment = Alignment.Vertical.CenterVertically,
+                    horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
+                ) {
+                    Image(
+                        provider = ImageProvider(android.R.drawable.ic_lock_power_off),
+                        contentDescription = actionLabel,
+                        modifier = GlanceModifier.size(iconSize),
+                        colorFilter = ColorFilter.tint(ColorProvider(palette.icon)),
+                        contentScale = ContentScale.Fit,
+                    )
+                    Spacer(modifier = GlanceModifier.height(8.dp))
+                    Text(
+                        text = actionLabel.uppercase(Locale.getDefault()),
+                        style = TextStyle(
+                            color = ColorProvider(palette.icon),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                        ),
+                    )
+                }
+            }
+            Spacer(modifier = GlanceModifier.height(10.dp))
+            Text(
+                text = supportingText,
+                maxLines = 2,
+                style = TextStyle(
+                    color = ColorProvider(Color(0xFF475569)),
+                    fontSize = 12.sp,
+                ),
+            )
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun PowerIconOnlyWidget(
+        compact: Boolean,
+        palette: WidgetPalette,
+        action: androidx.glance.action.Action?,
+        actionLabel: String,
+    ) {
+        val iconSize = if (compact) 36.dp else 44.dp
+        var iconModifier = GlanceModifier.size(iconSize)
+        if (action != null) {
+            iconModifier = iconModifier.clickable(action)
+        }
+        Box(
+            modifier = iconModifier,
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                provider = ImageProvider(android.R.drawable.ic_lock_power_off),
+                contentDescription = actionLabel,
+                modifier = GlanceModifier.size(iconSize),
+                colorFilter = ColorFilter.tint(ColorProvider(palette.icon)),
+                contentScale = ContentScale.Fit,
+            )
         }
     }
 
@@ -405,28 +478,6 @@ class DevicePowerWidget : GlanceAppWidget() {
             DateUtils.MINUTE_IN_MILLIS,
         )
         return "$statusLabel · $relativeTime"
-    }
-}
-
-class DevicePowerWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = DevicePowerWidget()
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        DevicePowerWidgetSyncScheduler.ensurePeriodic(context)
-        DevicePowerWidgetSyncScheduler.enqueueImmediate(context)
-    }
-
-    override fun onDisabled(context: Context) {
-        super.onDisabled(context)
-        DevicePowerWidgetSyncScheduler.cancelAll(context)
-    }
-
-    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
-        super.onDeleted(context, appWidgetIds)
-        if (!DevicePowerWidgetSyncScheduler.hasWidgets(context)) {
-            DevicePowerWidgetSyncScheduler.cancelAll(context)
-        }
     }
 }
 

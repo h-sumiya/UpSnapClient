@@ -22,6 +22,7 @@ const Map<String, String> appStringsJa = <String, String>{
   'Confirm': '確認',
   'Confirm the launcher prompt to place the widget.':
       'ランチャーの確認画面でウィジェットを配置してください。',
+  'Choose widget style': 'ウィジェットの種類を選択',
   'Confirm password': 'パスワード確認',
   'Connect to UpSnap': 'UpSnap に接続',
   'Connection': '接続',
@@ -105,6 +106,7 @@ const Map<String, String> appStringsJa = <String, String>{
   'Port number': 'ポート番号',
   'Ports': 'ポート',
   'Power': '電源',
+  'Power icon only': '電源アイコンのみ',
   'Profile': 'プロフィール',
   'Read': '参照',
   'Refresh': '更新',
@@ -132,6 +134,7 @@ const Map<String, String> appStringsJa = <String, String>{
   'Added': '追加済み',
   'Search devices': '機器を検索',
   'Select favicon': 'favicon を選択',
+  'Select how the Android widget should look.': 'Android ウィジェットの見た目を選択してください。',
   'Server': 'サーバー',
   'Server URL': 'サーバー URL',
   'Set up {appName}': '{appName} をセットアップ',
@@ -172,6 +175,9 @@ const Map<String, String> appStringsJa = <String, String>{
   'Wake timeout (seconds)': '起動待機時間（秒）',
   'Wake {name}?': '{name} を起動しますか？',
   'Website title': 'Web サイト名',
+  'Widget with device name': '機器名付きウィジェット',
   'Widget pinning is not available here.': 'この環境ではウィジェット追加に対応していません。',
+  'Shows the device name and current status.': '機器名と現在の状態を表示します。',
+  'Shows only the power button with status color.': '状態色付きの電源ボタンのみを表示します。',
   '{name} added.': '{name} を追加しました。',
 };
