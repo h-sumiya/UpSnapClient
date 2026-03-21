@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UpSnap</string>
+    <string name="device_power_widget_name">UpSnap 機器電源</string>
+    <string name="device_power_widget_description">単一機器の電源ウィジェット</string>
+    <string name="widget_status_online">オンライン</string>
+    <string name="widget_status_offline">オフライン</string>
+    <string name="widget_status_pending">処理中</string>
+    <string name="widget_status_unknown">不明</string>
+    <string name="widget_action_turn_on">起動</string>
+    <string name="widget_action_turn_off">停止</string>
+    <string name="widget_action_refresh">更新</string>
+    <string name="widget_not_configured">アプリからこのウィジェットを追加してください</string>
+    <string name="widget_sign_in_required">サインインが必要です</string>
+    <string name="widget_sync_error">同期できません</string>
+    <string name="widget_missing_shutdown">停止コマンド未設定</string>
+    <string name="widget_config_title">機器を選択</string>
+    <string name="widget_config_loading">機器を読み込み中…</string>
+    <string name="widget_config_empty">利用できる機器がありません</string>
+    <string name="widget_config_sign_in">先にアプリでサインインしてください</string>
+</resources>

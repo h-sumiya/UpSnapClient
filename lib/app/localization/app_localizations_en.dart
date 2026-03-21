@@ -1,6 +1,7 @@
 const Map<String, String> appStringsEn = <String, String>{
   'Account': 'Account',
   'Account saved.': 'Account saved.',
+  'Add widget': 'Add widget',
   'Add': 'Add',
   'Add all ({count})': 'Add all ({count})',
   'Add device': 'Add device',
@@ -19,6 +20,8 @@ const Map<String, String> appStringsEn = <String, String>{
   'Change the target UpSnap server for this client.':
       'Change the target UpSnap server for this client.',
   'Confirm': 'Confirm',
+  'Confirm the launcher prompt to place the widget.':
+      'Confirm the launcher prompt to place the widget.',
   'Confirm password': 'Confirm password',
   'Connect to UpSnap': 'Connect to UpSnap',
   'Connection': 'Connection',
@@ -173,5 +176,7 @@ const Map<String, String> appStringsEn = <String, String>{
   'Wake timeout (seconds)': 'Wake timeout (seconds)',
   'Wake {name}?': 'Wake {name}?',
   'Website title': 'Website title',
+  'Widget pinning is not available here.':
+      'Widget pinning is not available here.',
   '{name} added.': '{name} added.',
 };

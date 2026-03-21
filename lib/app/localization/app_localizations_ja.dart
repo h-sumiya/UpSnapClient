@@ -1,6 +1,7 @@
 const Map<String, String> appStringsJa = <String, String>{
   'Account': 'アカウント',
   'Account saved.': 'アカウントを保存しました。',
+  'Add widget': 'ウィジェットを追加',
   'Add': '追加',
   'Add all ({count})': 'すべて追加（{count}件）',
   'Add device': '機器を追加',
@@ -19,6 +20,8 @@ const Map<String, String> appStringsJa = <String, String>{
   'Change the target UpSnap server for this client.':
       'このクライアントが接続する UpSnap サーバーを変更します。',
   'Confirm': '確認',
+  'Confirm the launcher prompt to place the widget.':
+      'ランチャーの確認画面でウィジェットを配置してください。',
   'Confirm password': 'パスワード確認',
   'Connect to UpSnap': 'UpSnap に接続',
   'Connection': '接続',
@@ -169,5 +172,6 @@ const Map<String, String> appStringsJa = <String, String>{
   'Wake timeout (seconds)': '起動待機時間（秒）',
   'Wake {name}?': '{name} を起動しますか？',
   'Website title': 'Web サイト名',
+  'Widget pinning is not available here.': 'この環境ではウィジェット追加に対応していません。',
   '{name} added.': '{name} を追加しました。',
 };

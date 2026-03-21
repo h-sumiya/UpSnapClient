@@ -6,6 +6,7 @@ import '../../../../app/localization/app_localizations.dart';
 import '../../../../core/utils/cron_utils.dart';
 import '../../../../core/utils/date_formatters.dart';
 import '../../../../core/utils/error_message.dart';
+import '../../application/device_widget_service.dart';
 import '../../../session/application/session_controller.dart';
 import '../../data/devices_repository.dart';
 import '../../domain/device_models.dart';
@@ -42,6 +43,8 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     final canEdit =
         account?.isSuperuser == true ||
         permission?.canUpdate(widget.device.id) == true;
+    final widgetService = ref.watch(deviceWidgetServiceProvider);
+    final canPinWidget = canPower && widgetService.isSupportedPlatform;
 
     return Card(
       child: Padding(
@@ -161,6 +164,14 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                       _primaryActionLabel(context, widget.device.status),
                     ),
                   ),
+                if (canPinWidget) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: l10n.tr('Add widget'),
+                    onPressed: _busy ? null : _pinWidget,
+                    icon: const Icon(Icons.widgets_rounded),
+                  ),
+                ],
                 const SizedBox(width: 8),
                 PopupMenuButton<_CardAction>(
                   onSelected: (value) =>
@@ -234,6 +245,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         await repo.shutdownDevice(widget.device.id);
       }
 
+      await ref.read(deviceWidgetServiceProvider).refreshWidgets();
       await widget.onRefreshRequested();
     } catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(errorMessage(error))));
@@ -275,6 +287,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         }
         await repo.rebootDevice(widget.device.id);
       }
+      await ref.read(deviceWidgetServiceProvider).refreshWidgets();
       await widget.onRefreshRequested();
     } catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(errorMessage(error))));
@@ -302,6 +315,36 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     );
 
     return result ?? false;
+  }
+
+  Future<void> _pinWidget() async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final added = await ref
+          .read(deviceWidgetServiceProvider)
+          .pinDeviceWidget(widget.device);
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            added
+                ? context.l10n.tr(
+                    'Confirm the launcher prompt to place the widget.',
+                  )
+                : context.l10n.tr('Widget pinning is not available here.'),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(SnackBar(content: Text(errorMessage(error))));
+    }
   }
 
   String _primaryActionLabel(BuildContext context, DeviceStatus status) {

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UpSnap</string>
+    <string name="device_power_widget_name">UpSnap Device Power</string>
+    <string name="device_power_widget_description">Single-device power widget</string>
+    <string name="widget_status_online">Online</string>
+    <string name="widget_status_offline">Offline</string>
+    <string name="widget_status_pending">Pending</string>
+    <string name="widget_status_unknown">Unknown</string>
+    <string name="widget_action_turn_on">Turn on</string>
+    <string name="widget_action_turn_off">Turn off</string>
+    <string name="widget_action_refresh">Refresh</string>
+    <string name="widget_not_configured">Add this widget from the app</string>
+    <string name="widget_sign_in_required">Sign in required</string>
+    <string name="widget_sync_error">Unable to sync</string>
+    <string name="widget_missing_shutdown">Shutdown unavailable</string>
+    <string name="widget_config_title">Choose a device</string>
+    <string name="widget_config_loading">Loading devices…</string>
+    <string name="widget_config_empty">No devices available</string>
+    <string name="widget_config_sign_in">Open the app and sign in first</string>
+</resources>

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/localization/app_localizations.dart';
 import '../../../core/utils/error_message.dart';
+import '../application/device_widget_service.dart';
 import '../../session/application/session_controller.dart';
 import '../data/devices_repository.dart';
 import '../domain/device_models.dart';
@@ -19,7 +20,10 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
+  static const _pollInterval = Duration(seconds: 45);
+
   final _searchController = TextEditingController();
   Timer? _poller;
   List<DeviceModel> _devices = const <DeviceModel>[];
@@ -31,17 +35,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     unawaited(_loadDevices());
-    _poller = Timer.periodic(const Duration(seconds: 12), (_) {
-      unawaited(_loadDevices(silent: true));
-    });
+    _startPolling();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
-    _poller?.cancel();
+    _stopPolling();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startPolling(forceRefresh: true);
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _stopPolling();
+    }
   }
 
   @override
@@ -224,6 +243,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _wakeGroup(String groupId) async {
     try {
       await ref.read(devicesRepositoryProvider).wakeGroup(groupId);
+      await ref.read(deviceWidgetServiceProvider).refreshWidgets();
       await _loadDevices();
     } catch (error) {
       if (!mounted) {
@@ -233,6 +253,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(errorMessage(error))));
     }
+  }
+
+  void _startPolling({bool forceRefresh = false}) {
+    _poller?.cancel();
+    if (forceRefresh) {
+      unawaited(_loadDevices(silent: true));
+    }
+    _poller = Timer.periodic(_pollInterval, (_) {
+      unawaited(_loadDevices(silent: true));
+    });
+  }
+
+  void _stopPolling() {
+    _poller?.cancel();
+    _poller = null;
   }
 }
 
@@ -317,12 +352,21 @@ class _DeviceGrid extends StatelessWidget {
               device: device,
               onRefreshRequested: onRefresh,
               onEditRequested: () async {
+                final container = ProviderScope.containerOf(
+                  context,
+                  listen: false,
+                );
                 final changed = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
                     builder: (_) => DeviceEditorScreen(deviceId: device.id),
                   ),
                 );
                 if (changed == true) {
+                  // Keep widget labels in sync after edits without
+                  // funneling Flutter data into the widget renderer.
+                  await container
+                      .read(deviceWidgetServiceProvider)
+                      .refreshWidgets();
                   await onRefresh();
                 }
               },
