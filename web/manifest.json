@@ -1,11 +1,11 @@
 {
-    "name": "upsnap_client",
-    "short_name": "upsnap_client",
+    "name": "UpSnap",
+    "short_name": "UpSnap",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F3F7F6",
+    "theme_color": "#0F766E",
+    "description": "UpSnap client.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

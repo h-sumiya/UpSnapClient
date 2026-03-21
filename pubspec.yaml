@@ -40,3 +40,25 @@ flutter:
   assets:
     - assets/gopher.svg
     - assets/avatars/
+
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"
+  android: true
+  ios: true
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  background_color_ios: "#F3F7F6"
+  adaptive_icon_background: "#F3F7F6"
+  adaptive_icon_foreground: "assets/icon/adaptive_foreground.png"
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    background_color: "#F3F7F6"
+    theme_color: "#0F766E"
+  windows:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
