@@ -13,12 +13,9 @@ This is a Flutter client for [UpSnap](https://github.com/seriousm4x/upsnap).
 
 ## Screenshots
 
-App screen:
+<p>
+	<img src="screenshots/apphome.png" alt="UpSnap Flutter Client app screen" width="48%" />
+	<img src="screenshots/androidwidget.png" alt="UpSnap Flutter Client Android widgets" width="48%" />
+</p>
 
-![UpSnap Flutter Client app screen](screenshots/apphome.png)
-
-Android widget screen:
-
-The screenshot below shows two widget sizes: a large widget and a small widget.
-
-![UpSnap Flutter Client Android widgets](screenshots/androidwidget.png)
+Left: app screen. Right: Android widget screen (large and small widget sizes).

@@ -13,12 +13,9 @@
 
 ## スクリーンショット
 
-アプリ画面:
+<p>
+	<img src="screenshots/apphome.png" alt="UpSnap Flutter Client app screen" width="48%" />
+	<img src="screenshots/androidwidget.png" alt="UpSnap Flutter Client Android widgets" width="48%" />
+</p>
 
-![UpSnap Flutter Client app screen](screenshots/apphome.png)
-
-Android ウィジェット画面:
-
-下のスクリーンショットには、サイズの異なる 2 つのウィジェット（大・小）が写っています。
-
-![UpSnap Flutter Client Android widgets](screenshots/androidwidget.png)
+左: アプリ画面。右: Android ウィジェット画面（大・小の2サイズ）。

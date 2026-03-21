@@ -16,13 +16,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install mise
-        uses: jdx/mise-action@v3
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
-          github_token: ${{ github.token }}
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: beta
+          cache: true
 
       - name: Restore Flutter packages
-        run: mise exec -- flutter pub get
+        run: flutter pub get
 
       - name: Prepare Android signing
         env:
@@ -40,7 +47,7 @@ jobs:
           EOF
 
       - name: Build Android artifacts
-        run: mise exec -- flutter build apk --release && mise exec -- flutter build appbundle --release
+        run: flutter build apk --release && flutter build appbundle --release
 
       - name: Publish GitHub release
         env:
