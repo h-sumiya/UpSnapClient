@@ -1,4 +1,4 @@
-package com.example.upsnap_client
+package red.hiro.upsnap
 
 import io.flutter.embedding.android.FlutterActivity
 

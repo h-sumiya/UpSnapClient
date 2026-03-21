@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -26,6 +27,21 @@ final authAccountProvider = Provider<AuthAccount?>((ref) {
 final permissionProvider = Provider<PermissionModel?>((ref) {
   return ref.watch(sessionControllerProvider).permission;
 });
+
+@visibleForTesting
+bool shouldRestoreStoredAuth({
+  required bool preserveAuth,
+  required String normalizedUrl,
+  String? activeServerUrl,
+  String? savedServerUrl,
+}) {
+  if (!preserveAuth) {
+    return false;
+  }
+
+  final currentServerUrl = activeServerUrl ?? savedServerUrl;
+  return currentServerUrl == normalizedUrl;
+}
 
 class SessionController extends Notifier<AppSessionState> {
   AppPreferences? _preferences;
@@ -57,11 +73,13 @@ class SessionController extends Notifier<AppSessionState> {
   Future<void> connect(String rawUrl, {bool preserveAuth = false}) async {
     try {
       final normalizedUrl = normalizeBaseUrl(rawUrl);
-      final previousUrl = state.serverUrl;
-      final sameServer = previousUrl == normalizedUrl;
-      final initialAuth = preserveAuth && sameServer
-          ? _preferences?.pocketBaseAuth
-          : null;
+      final sameServer = shouldRestoreStoredAuth(
+        preserveAuth: preserveAuth,
+        normalizedUrl: normalizedUrl,
+        activeServerUrl: state.serverUrl,
+        savedServerUrl: _preferences?.serverUrl,
+      );
+      final initialAuth = sameServer ? _preferences?.pocketBaseAuth : null;
 
       await _preferences?.setServerUrl(normalizedUrl);
       if (!sameServer) {
