@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/utils/error_message.dart';
 import '../../../shared/widgets/avatar_image.dart';
 import '../../devices/domain/device_models.dart';
@@ -40,9 +41,10 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final isSuperuser = ref.watch(authAccountProvider)?.isSuperuser == true;
     if (!isSuperuser) {
-      return const Center(child: Text('Admin access required.'));
+      return Center(child: Text(l10n.tr('Admin access required.')));
     }
 
     if (_loading) {
@@ -58,6 +60,10 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
             devices: _devices,
             permission: _permissionForUser(user.id),
             onChanged: (permission) async {
+              final permissionsSavedMessage = context.l10n.tr(
+                'Permissions saved for {username}.',
+                {'username': user.username},
+              );
               try {
                 final saved = await ref
                     .read(usersRepositoryProvider)
@@ -72,7 +78,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                       saved,
                   ];
                 });
-                _show('Permissions saved for ${user.username}.');
+                _show(permissionsSavedMessage);
               } catch (error) {
                 _show(errorMessage(error));
               }
@@ -88,33 +94,33 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Create user',
+                  l10n.tr('Create user'),
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _usernameController,
-                  decoration: const InputDecoration(labelText: 'Username'),
+                  decoration: InputDecoration(labelText: l10n.tr('Username')),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: InputDecoration(labelText: l10n.tr('Password')),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _passwordConfirmController,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Confirm password',
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Confirm password'),
                   ),
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: _createUser,
                   icon: const Icon(Icons.person_add_alt_1_rounded),
-                  label: const Text('Create user'),
+                  label: Text(l10n.tr('Create user')),
                 ),
               ],
             ),
@@ -157,6 +163,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   }
 
   Future<void> _createUser() async {
+    final userCreatedMessage = context.l10n.tr('User created.');
     try {
       await ref
           .read(usersRepositoryProvider)
@@ -169,26 +176,28 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
       _passwordController.clear();
       _passwordConfirmController.clear();
       await _load();
-      _show('User created.');
+      _show(userCreatedMessage);
     } catch (error) {
       _show(errorMessage(error));
     }
   }
 
   Future<void> _deleteUser(UserModel user) async {
+    final userDeletedMessage = context.l10n.tr('User deleted.');
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
+        final l10n = context.l10n;
         return AlertDialog(
-          content: Text('Delete ${user.username}?'),
+          content: Text(l10n.tr('Delete {name}?', {'name': user.username})),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(l10n.tr('Cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(l10n.tr('Delete')),
             ),
           ],
         );
@@ -204,7 +213,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
           .read(usersRepositoryProvider)
           .deleteUser(user, _permissionForUser(user.id));
       await _load();
-      _show('User deleted.');
+      _show(userDeletedMessage);
     } catch (error) {
       _show(errorMessage(error));
     }
@@ -258,6 +267,7 @@ class _UserCardState extends State<_UserCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -281,10 +291,10 @@ class _UserCardState extends State<_UserCard> {
                   () => _permission = _permission.copyWith(create: value),
                 );
               },
-              title: const Text('Allow creating devices'),
+              title: Text(l10n.tr('Allow creating devices')),
             ),
             ExpansionTile(
-              title: const Text('Device permissions'),
+              title: Text(l10n.tr('Device permissions')),
               children: [
                 for (final device in widget.devices)
                   Padding(
@@ -301,7 +311,7 @@ class _UserCardState extends State<_UserCard> {
                           runSpacing: 8,
                           children: [
                             _permChip(
-                              label: 'Read',
+                              label: l10n.tr('Read'),
                               selected: _permission.read.contains(device.id),
                               onSelected: (value) => _toggleList(
                                 value,
@@ -313,7 +323,7 @@ class _UserCardState extends State<_UserCard> {
                               ),
                             ),
                             _permChip(
-                              label: 'Update',
+                              label: l10n.tr('Update'),
                               selected: _permission.update.contains(device.id),
                               onSelected: (value) => _toggleList(
                                 value,
@@ -325,7 +335,7 @@ class _UserCardState extends State<_UserCard> {
                               ),
                             ),
                             _permChip(
-                              label: 'Delete',
+                              label: l10n.tr('Delete'),
                               selected: _permission.delete.contains(device.id),
                               onSelected: (value) => _toggleList(
                                 value,
@@ -337,7 +347,7 @@ class _UserCardState extends State<_UserCard> {
                               ),
                             ),
                             _permChip(
-                              label: 'Power',
+                              label: l10n.tr('Power'),
                               selected: _permission.power.contains(device.id),
                               onSelected: (value) => _toggleList(
                                 value,
@@ -361,13 +371,13 @@ class _UserCardState extends State<_UserCard> {
                 OutlinedButton.icon(
                   onPressed: widget.onDelete,
                   icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text('Delete'),
+                  label: Text(l10n.tr('Delete')),
                 ),
                 const Spacer(),
                 FilledButton.icon(
                   onPressed: () => widget.onChanged(_permission),
                   icon: const Icon(Icons.save_rounded),
-                  label: const Text('Save'),
+                  label: Text(l10n.tr('Save')),
                 ),
               ],
             ),

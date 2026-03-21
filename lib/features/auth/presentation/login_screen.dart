@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pocketbase/pocketbase.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/utils/error_message.dart';
 import '../../session/application/session_controller.dart';
 import '../data/auth_repository.dart';
@@ -35,6 +36,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final settings = ref.watch(sessionControllerProvider).publicSettings;
 
     return Scaffold(
@@ -58,29 +60,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Sign in with your admin or user account.',
+                        l10n.tr('Sign in with your admin or user account.'),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
                         controller: _identityController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email or username',
+                        decoration: InputDecoration(
+                          labelText: l10n.tr('Email or username'),
                         ),
                         validator: (value) =>
                             value == null || value.trim().isEmpty
-                            ? 'Required'
+                            ? l10n.tr('Required')
                             : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
+                        decoration: InputDecoration(
+                          labelText: l10n.tr('Password'),
                         ),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Required' : null,
+                        validator: (value) => value == null || value.isEmpty
+                            ? l10n.tr('Required')
+                            : null,
                         onFieldSubmitted: (_) => _login(),
                       ),
                       const SizedBox(height: 24),
@@ -96,7 +99,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                 )
                               : const Icon(Icons.lock_open_rounded),
-                          label: Text(_busy ? 'Signing in…' : 'Sign in'),
+                          label: Text(
+                            l10n.tr(_busy ? 'Signing in...' : 'Sign in'),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -136,7 +141,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 .read(sessionControllerProvider.notifier)
                                 .showServerConfiguration();
                           },
-                          child: const Text('Change server'),
+                          child: Text(l10n.tr('Change server')),
                         ),
                       ),
                     ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/utils/cron_utils.dart';
 import '../../../core/utils/error_message.dart';
 import '../../session/application/session_controller.dart';
@@ -91,16 +92,17 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEditing ? 'Edit Device' : 'New Device'),
+        title: Text(l10n.tr(widget.isEditing ? 'Edit Device' : 'New Device')),
         bottom: widget.isEditing
             ? null
             : TabBar(
                 controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Manual'),
-                  Tab(text: 'Network Scan'),
+                tabs: [
+                  Tab(text: l10n.tr('Manual')),
+                  Tab(text: l10n.tr('Network Scan')),
                 ],
               ),
       ),
@@ -118,28 +120,42 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
   }
 
   Widget _buildForm() {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
     return Form(
       key: _formKey,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _Section(
-            title: 'General',
+            title: l10n.tr('General'),
             child: Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
-                _wideField(_nameController, 'Name', required: true),
-                _wideField(_ipController, 'IP address', required: true),
-                _wideField(_macController, 'MAC address', required: true),
-                _wideField(_netmaskController, 'Netmask', required: true),
-                _wideField(_descriptionController, 'Description'),
+                _wideField(_nameController, l10n.tr('Name'), required: true),
+                _wideField(
+                  _ipController,
+                  l10n.tr('IP address'),
+                  required: true,
+                ),
+                _wideField(
+                  _macController,
+                  l10n.tr('MAC address'),
+                  required: true,
+                ),
+                _wideField(
+                  _netmaskController,
+                  l10n.tr('Netmask'),
+                  required: true,
+                ),
+                _wideField(_descriptionController, l10n.tr('Description')),
               ],
             ),
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Ports',
+            title: l10n.tr('Ports'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -170,34 +186,40 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                     });
                   },
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add port'),
+                  label: Text(l10n.tr('Add port')),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Link',
+            title: l10n.tr('Link'),
             child: Column(
               children: [
                 TextField(
                   controller: _linkController,
-                  decoration: const InputDecoration(labelText: 'Device link'),
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Device link'),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<DeviceLinkOpenMode>(
                   initialValue: _linkOpen,
-                  decoration: const InputDecoration(
-                    labelText: 'Open link after wake',
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Open link after wake'),
                   ),
                   items: DeviceLinkOpenMode.values
                       .map(
                         (value) => DropdownMenuItem(
                           value: value,
                           child: Text(switch (value) {
-                            DeviceLinkOpenMode.none => 'No',
-                            DeviceLinkOpenMode.sameTab => 'Open immediately',
-                            DeviceLinkOpenMode.newTab => 'Open externally',
+                            DeviceLinkOpenMode.none => l10n.tr('No'),
+                            DeviceLinkOpenMode.sameTab => l10n.tr(
+                              'Open immediately',
+                            ),
+                            DeviceLinkOpenMode.newTab => l10n.tr(
+                              'Open externally',
+                            ),
                           }),
                         ),
                       )
@@ -213,25 +235,25 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Ping',
+            title: l10n.tr('Ping'),
             child: TextField(
               controller: _pingCommandController,
-              decoration: const InputDecoration(
-                labelText: 'Ping command override',
+              decoration: InputDecoration(
+                labelText: l10n.tr('Ping command override'),
                 prefixText: '\$ ',
               ),
             ),
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Wake',
+            title: l10n.tr('Wake'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 TextField(
                   controller: _wakeCommandController,
-                  decoration: const InputDecoration(
-                    labelText: 'Wake command override',
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Wake command override'),
                     prefixText: '\$ ',
                   ),
                 ),
@@ -239,8 +261,8 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                 TextFormField(
                   initialValue: _wakeTimeout.toString(),
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Wake timeout (seconds)',
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Wake timeout (seconds)'),
                   ),
                   onChanged: (value) => _wakeTimeout = int.tryParse(value) ?? 0,
                 ),
@@ -248,14 +270,17 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                   value: _wakeCronEnabled,
                   onChanged: (value) =>
                       setState(() => _wakeCronEnabled = value),
-                  title: const Text('Enable wake schedule'),
+                  title: Text(l10n.tr('Enable wake schedule')),
                 ),
                 if (_wakeCronEnabled) ...[
                   TextField(
                     controller: _wakeCronController,
                     decoration: InputDecoration(
-                      labelText: 'Wake cron',
-                      helperText: cronPreview(_wakeCronController.text),
+                      labelText: l10n.tr('Wake cron'),
+                      helperText: cronPreview(
+                        _wakeCronController.text,
+                        locale: locale,
+                      ),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -263,21 +288,21 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                 SwitchListTile(
                   value: _wakeConfirm,
                   onChanged: (value) => setState(() => _wakeConfirm = value),
-                  title: const Text('Require wake confirmation'),
+                  title: Text(l10n.tr('Require wake confirmation')),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Shutdown',
+            title: l10n.tr('Shutdown'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 TextField(
                   controller: _shutdownCommandController,
-                  decoration: const InputDecoration(
-                    labelText: 'Shutdown command',
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Shutdown command'),
                     prefixText: '\$ ',
                   ),
                 ),
@@ -285,8 +310,8 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                 TextFormField(
                   initialValue: _shutdownTimeout.toString(),
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Shutdown timeout (seconds)',
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Shutdown timeout (seconds)'),
                   ),
                   onChanged: (value) =>
                       _shutdownTimeout = int.tryParse(value) ?? 0,
@@ -295,14 +320,17 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                   value: _shutdownCronEnabled,
                   onChanged: (value) =>
                       setState(() => _shutdownCronEnabled = value),
-                  title: const Text('Enable shutdown schedule'),
+                  title: Text(l10n.tr('Enable shutdown schedule')),
                 ),
                 if (_shutdownCronEnabled) ...[
                   TextField(
                     controller: _shutdownCronController,
                     decoration: InputDecoration(
-                      labelText: 'Shutdown cron',
-                      helperText: cronPreview(_shutdownCronController.text),
+                      labelText: l10n.tr('Shutdown cron'),
+                      helperText: cronPreview(
+                        _shutdownCronController.text,
+                        locale: locale,
+                      ),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -311,46 +339,48 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                   value: _shutdownConfirm,
                   onChanged: (value) =>
                       setState(() => _shutdownConfirm = value),
-                  title: const Text('Require shutdown confirmation'),
+                  title: Text(l10n.tr('Require shutdown confirmation')),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Sleep-On-LAN',
+            title: l10n.tr('Sleep-On-LAN'),
             child: Column(
               children: [
                 SwitchListTile(
                   value: _solEnabled,
                   onChanged: (value) => setState(() => _solEnabled = value),
-                  title: const Text('Enable Sleep-On-LAN'),
+                  title: Text(l10n.tr('Enable Sleep-On-LAN')),
                 ),
                 if (_solEnabled) ...[
                   TextFormField(
                     initialValue: _solPort.toString(),
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Sleep-On-LAN port',
+                    decoration: InputDecoration(
+                      labelText: l10n.tr('Sleep-On-LAN port'),
                     ),
                     onChanged: (value) => _solPort = int.tryParse(value) ?? 0,
                   ),
                   SwitchListTile(
                     value: _solAuth,
                     onChanged: (value) => setState(() => _solAuth = value),
-                    title: const Text('Require authorization'),
+                    title: Text(l10n.tr('Require authorization')),
                   ),
                   if (_solAuth) ...[
                     TextField(
                       controller: _solUserController,
-                      decoration: const InputDecoration(labelText: 'SOL user'),
+                      decoration: InputDecoration(
+                        labelText: l10n.tr('SOL user'),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _solPasswordController,
                       obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'SOL password',
+                      decoration: InputDecoration(
+                        labelText: l10n.tr('SOL password'),
                       ),
                     ),
                   ],
@@ -360,16 +390,16 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Wake Password',
+            title: l10n.tr('Wake Password'),
             child: TextField(
               controller: _passwordController,
               maxLength: 6,
-              decoration: const InputDecoration(labelText: 'Wake password'),
+              decoration: InputDecoration(labelText: l10n.tr('Wake password')),
             ),
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Groups',
+            title: l10n.tr('Groups'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -402,15 +432,15 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                     Expanded(
                       child: TextField(
                         controller: _newGroupController,
-                        decoration: const InputDecoration(
-                          labelText: 'New group',
+                        decoration: InputDecoration(
+                          labelText: l10n.tr('New group'),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     FilledButton.tonal(
                       onPressed: _addGroup,
-                      child: const Text('Add'),
+                      child: Text(l10n.tr('Add')),
                     ),
                   ],
                 ),
@@ -424,7 +454,7 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                 OutlinedButton.icon(
                   onPressed: _saving ? null : _deleteDevice,
                   icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text('Delete'),
+                  label: Text(l10n.tr('Delete')),
                 ),
                 const Spacer(),
               ],
@@ -436,7 +466,7 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.save_rounded),
-                label: Text(_saving ? 'Saving…' : 'Save'),
+                label: Text(l10n.tr(_saving ? 'Saving...' : 'Save')),
               ),
             ],
           ),
@@ -459,7 +489,9 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
           if (!required) {
             return null;
           }
-          return value == null || value.trim().isEmpty ? 'Required' : null;
+          return value == null || value.trim().isEmpty
+              ? context.l10n.tr('Required')
+              : null;
         },
       ),
     );
@@ -525,6 +557,10 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
   }
 
   Future<void> _save() async {
+    final wakeCronInvalidMessage = context.l10n.tr('Wake cron is invalid.');
+    final shutdownCronInvalidMessage = context.l10n.tr(
+      'Shutdown cron is invalid.',
+    );
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -532,12 +568,12 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
     final settingsRepo = ref.read(settingsRepositoryProvider);
     if (_wakeCronEnabled &&
         !await settingsRepo.validateCron(_wakeCronController.text.trim())) {
-      _showMessage('Wake cron is invalid.');
+      _showMessage(wakeCronInvalidMessage);
       return;
     }
     if (_shutdownCronEnabled &&
         !await settingsRepo.validateCron(_shutdownCronController.text.trim())) {
-      _showMessage('Shutdown cron is invalid.');
+      _showMessage(shutdownCronInvalidMessage);
       return;
     }
 
@@ -600,16 +636,19 @@ class _DeviceEditorScreenState extends ConsumerState<DeviceEditorScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
+        final l10n = context.l10n;
         return AlertDialog(
-          content: Text('Delete ${_nameController.text}?'),
+          content: Text(
+            l10n.tr('Delete {name}?', {'name': _nameController.text}),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(l10n.tr('Cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
+              child: Text(l10n.tr('Delete')),
             ),
           ],
         );

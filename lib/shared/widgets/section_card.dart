@@ -17,7 +17,9 @@ class SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final trailingWidgets = trailing == null ? const <Widget>[] : <Widget>[trailing!];
+    final trailingWidgets = trailing == null
+        ? const <Widget>[]
+        : <Widget>[trailing!];
 
     return Card(
       child: Padding(

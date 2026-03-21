@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/localization/app_localizations.dart';
 import '../../../../core/utils/error_message.dart';
 import '../../../settings/data/settings_repository.dart';
 import '../../../settings/domain/settings_models.dart';
@@ -41,6 +42,7 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -50,8 +52,8 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
       children: [
         TextField(
           controller: _rangeController,
-          decoration: const InputDecoration(
-            labelText: 'Scan range',
+          decoration: InputDecoration(
+            labelText: l10n.tr('Scan range'),
             hintText: '192.168.1.0/24',
           ),
         ),
@@ -63,7 +65,7 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
             FilledButton.icon(
               onPressed: _scanning ? null : _saveRange,
               icon: const Icon(Icons.save_alt_rounded),
-              label: const Text('Save range'),
+              label: Text(l10n.tr('Save range')),
             ),
             FilledButton.tonalIcon(
               onPressed: _scanning ? null : _scan,
@@ -73,7 +75,7 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.radar_rounded),
-              label: Text(_scanning ? 'Scanning…' : 'Scan'),
+              label: Text(l10n.tr(_scanning ? 'Scanning...' : 'Scan')),
             ),
           ],
         ),
@@ -81,12 +83,12 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
         SwitchListTile(
           value: _replaceNetmask,
           onChanged: (value) => setState(() => _replaceNetmask = value),
-          title: const Text('Replace scanned netmask'),
+          title: Text(l10n.tr('Replace scanned netmask')),
         ),
         if (_replaceNetmask) ...[
           const SizedBox(height: 8),
           TextField(
-            decoration: const InputDecoration(labelText: 'New netmask'),
+            decoration: InputDecoration(labelText: l10n.tr('New netmask')),
             onChanged: (value) => _replacementNetmask = value,
           ),
           const SizedBox(height: 12),
@@ -94,14 +96,18 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
         SwitchListTile(
           value: _includeUnknown,
           onChanged: (value) => setState(() => _includeUnknown = value),
-          title: const Text('Include devices named "Unknown"'),
+          title: Text(l10n.tr('Include devices named "Unknown"')),
         ),
         const SizedBox(height: 16),
         if (_scanResponse != null && _scanResponse!.devices.isNotEmpty) ...[
           FilledButton.icon(
             onPressed: _addAll,
             icon: const Icon(Icons.playlist_add_rounded),
-            label: Text('Add all (${_eligibleDevices.length})'),
+            label: Text(
+              l10n.tr('Add all ({count})', {
+                'count': _eligibleDevices.length.toString(),
+              }),
+            ),
           ),
           const SizedBox(height: 16),
           for (final device in _scanResponse!.devices)
@@ -115,9 +121,17 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('MAC: ${device.mac}'),
-                        Text('Vendor: ${device.macVendor}'),
-                        Text('Netmask: ${_scanResponse!.netmask}'),
+                        Text(l10n.tr('MAC: {value}', {'value': device.mac})),
+                        Text(
+                          l10n.tr('Vendor: {value}', {
+                            'value': device.macVendor,
+                          }),
+                        ),
+                        Text(
+                          l10n.tr('Netmask: {value}', {
+                            'value': _scanResponse!.netmask,
+                          }),
+                        ),
                         const SizedBox(height: 12),
                         FilledButton.tonal(
                           onPressed: _addedIps.contains(device.ip)
@@ -125,8 +139,8 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
                               : () => _addOne(device),
                           child: Text(
                             _addedIps.contains(device.ip)
-                                ? 'Added'
-                                : 'Add device',
+                                ? l10n.tr('Added')
+                                : l10n.tr('Add device'),
                           ),
                         ),
                       ],
@@ -136,7 +150,7 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
               ),
             ),
         ] else
-          const Text('No scan results yet.'),
+          Text(l10n.tr('No scan results yet.')),
       ],
     );
   }
@@ -193,9 +207,9 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Scan range saved.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.tr('Scan range saved.'))),
+      );
     } catch (error) {
       if (!mounted) {
         return;
@@ -241,9 +255,13 @@ class _NetworkScanPanelState extends ConsumerState<NetworkScanPanel> {
         return;
       }
       setState(() => _addedIps.add(device.ip));
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${device.name} added.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.tr('{name} added.', {'name': device.name}),
+          ),
+        ),
+      );
       await widget.onDevicesAdded();
     } catch (error) {
       if (!mounted) {

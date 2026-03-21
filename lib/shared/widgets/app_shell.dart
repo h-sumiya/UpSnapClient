@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/localization/app_localizations.dart';
 import '../../features/account/presentation/account_screen.dart';
 import '../../features/devices/presentation/device_editor_screen.dart';
 import '../../features/devices/presentation/home_screen.dart';
@@ -21,29 +22,30 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final session = ref.watch(sessionControllerProvider);
     final account = session.account;
     final permission = session.permission;
 
     final destinations = <_AppDestination>[
-      const _AppDestination(
-        title: 'Devices',
+      _AppDestination(
+        title: l10n.tr('Devices'),
         icon: Icons.computer_rounded,
         builder: HomeScreen.new,
       ),
       if (account?.isSuperuser == true)
-        const _AppDestination(
-          title: 'Users',
+        _AppDestination(
+          title: l10n.tr('Users'),
           icon: Icons.manage_accounts_rounded,
           builder: UsersScreen.new,
         ),
-      const _AppDestination(
-        title: 'Settings',
+      _AppDestination(
+        title: l10n.tr('Settings'),
         icon: Icons.settings_rounded,
         builder: SettingsScreen.new,
       ),
-      const _AppDestination(
-        title: 'Account',
+      _AppDestination(
+        title: l10n.tr('Account'),
         icon: Icons.person_rounded,
         builder: AccountScreen.new,
       ),
@@ -86,7 +88,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
               ListTile(
                 leading: const Icon(Icons.logout_rounded),
-                title: const Text('Logout'),
+                title: Text(l10n.tr('Logout')),
                 onTap: () async {
                   Navigator.of(context).pop();
                   await ref.read(sessionControllerProvider.notifier).logout();
@@ -104,7 +106,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 );
               },
               icon: const Icon(Icons.add_rounded),
-              label: const Text('New Device'),
+              label: Text(l10n.tr('New Device')),
             )
           : null,
       body: SafeArea(child: destinationScreen(selected)),

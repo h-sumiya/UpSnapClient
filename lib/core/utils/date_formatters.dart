@@ -9,18 +9,20 @@ DateTime? tryParseDate(String? value) {
   return DateTime.tryParse(value)?.toLocal();
 }
 
-String formatRelativeDate(DateTime? value) {
+String formatRelativeDate(DateTime? value, {String? locale}) {
+  final resolvedLocale = locale == 'ja' ? 'ja' : 'en';
   if (value == null) {
-    return 'Unknown';
+    return resolvedLocale == 'ja' ? '不明' : 'Unknown';
   }
 
-  return timeago.format(value);
+  return timeago.format(value, locale: resolvedLocale);
 }
 
-String formatPreciseDate(DateTime? value) {
+String formatPreciseDate(DateTime? value, {String? locale}) {
+  final resolvedLocale = locale == 'ja' ? 'ja' : 'en';
   if (value == null) {
-    return 'Unknown';
+    return resolvedLocale == 'ja' ? '不明' : 'Unknown';
   }
 
-  return DateFormat.yMMMd().add_jm().format(value);
+  return DateFormat.yMMMd(resolvedLocale).add_jm().format(value);
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../features/session/application/session_controller.dart';
 import '../../../shared/widgets/section_card.dart';
 import '../../../shared/widgets/upsnap_logo.dart';
@@ -36,6 +37,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -45,9 +47,10 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: SectionCard(
-              title: 'Connect to UpSnap',
-              subtitle:
-                  'Enter the base URL of your UpSnap server. HTTP on a local network is supported.',
+              title: l10n.tr('Connect to UpSnap'),
+              subtitle: l10n.tr(
+                'Enter the base URL of your UpSnap server. HTTP on a local network is supported.',
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -56,15 +59,17 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                   TextField(
                     controller: _urlController,
                     keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
-                      labelText: 'Server URL',
+                    decoration: InputDecoration(
+                      labelText: l10n.tr('Server URL'),
                       hintText: 'http://192.168.1.10:8090',
                     ),
                     onSubmitted: (_) => _save(),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Examples: `http://upsnap.local:8090`, `https://myserver.example.com`',
+                    l10n.tr(
+                      'Examples: `http://upsnap.local:8090`, `https://myserver.example.com`',
+                    ),
                     style: theme.textTheme.bodySmall,
                   ),
                   if (widget.errorMessage != null) ...[
@@ -82,7 +87,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                     child: FilledButton.icon(
                       onPressed: _save,
                       icon: const Icon(Icons.wifi_find_rounded),
-                      label: const Text('Save and connect'),
+                      label: Text(l10n.tr('Save and connect')),
                     ),
                   ),
                 ],

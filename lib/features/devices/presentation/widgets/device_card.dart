@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../app/localization/app_localizations.dart';
 import '../../../../core/utils/cron_utils.dart';
 import '../../../../core/utils/date_formatters.dart';
 import '../../../../core/utils/error_message.dart';
@@ -30,6 +31,8 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
     final account = ref.watch(authAccountProvider);
     final permission = ref.watch(permissionProvider);
 
@@ -114,18 +117,19 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                   if (widget.device.wakeCronEnabled)
                     _InfoChip(
                       icon: Icons.schedule_send_rounded,
-                      label: 'Wake: ${cronPreview(widget.device.wakeCron)}',
+                      label:
+                          '${l10n.tr('Wake')}: ${cronPreview(widget.device.wakeCron, locale: locale)}',
                     ),
                   if (widget.device.shutdownCronEnabled)
                     _InfoChip(
                       icon: Icons.schedule_rounded,
                       label:
-                          'Shutdown: ${cronPreview(widget.device.shutdownCron)}',
+                          '${l10n.tr('Shutdown')}: ${cronPreview(widget.device.shutdownCron, locale: locale)}',
                     ),
                   if (widget.device.password.trim().isNotEmpty)
-                    const _InfoChip(
+                    _InfoChip(
                       icon: Icons.password_rounded,
-                      label: 'Wake password',
+                      label: l10n.tr('Wake password'),
                     ),
                 ],
               ),
@@ -135,7 +139,12 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
               children: [
                 Expanded(
                   child: Text(
-                    'Updated ${formatRelativeDate(widget.device.updatedAt)}',
+                    l10n.tr('Updated {date}', {
+                      'date': formatRelativeDate(
+                        widget.device.updatedAt,
+                        locale: locale,
+                      ),
+                    }),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -148,29 +157,36 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.power_settings_new_rounded),
-                    label: Text(_primaryActionLabel(widget.device.status)),
+                    label: Text(
+                      _primaryActionLabel(context, widget.device.status),
+                    ),
                   ),
                 const SizedBox(width: 8),
                 PopupMenuButton<_CardAction>(
                   onSelected: (value) =>
                       _handleMenuAction(value, canEdit, canPower),
-                  itemBuilder: (context) => [
-                    if (canEdit)
-                      const PopupMenuItem(
-                        value: _CardAction.edit,
-                        child: Text('Edit device'),
-                      ),
-                    if (canPower && widget.device.status == DeviceStatus.online)
-                      const PopupMenuItem(
-                        value: _CardAction.sleep,
-                        child: Text('Sleep'),
-                      ),
-                    if (canPower && widget.device.status == DeviceStatus.online)
-                      const PopupMenuItem(
-                        value: _CardAction.reboot,
-                        child: Text('Reboot'),
-                      ),
-                  ],
+                  itemBuilder: (context) {
+                    final l10n = context.l10n;
+                    return [
+                      if (canEdit)
+                        PopupMenuItem(
+                          value: _CardAction.edit,
+                          child: Text(l10n.tr('Edit device')),
+                        ),
+                      if (canPower &&
+                          widget.device.status == DeviceStatus.online)
+                        PopupMenuItem(
+                          value: _CardAction.sleep,
+                          child: Text(l10n.tr('Sleep')),
+                        ),
+                      if (canPower &&
+                          widget.device.status == DeviceStatus.online)
+                        PopupMenuItem(
+                          value: _CardAction.reboot,
+                          child: Text(l10n.tr('Reboot')),
+                        ),
+                    ];
+                  },
                 ),
               ],
             ),
@@ -181,6 +197,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
   }
 
   Future<void> _handlePrimaryPowerAction() async {
+    final l10n = context.l10n;
     final repo = ref.read(devicesRepositoryProvider);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -188,7 +205,9 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     try {
       if (widget.device.status == DeviceStatus.offline) {
         if (widget.device.wakeConfirm) {
-          final confirmed = await _confirm('Wake ${widget.device.name}?');
+          final confirmed = await _confirm(
+            l10n.tr('Wake {name}?', {'name': widget.device.name}),
+          );
           if (!confirmed) {
             return;
           }
@@ -200,12 +219,14 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
       } else if (widget.device.status == DeviceStatus.online) {
         if (widget.device.shutdownCommand.trim().isEmpty) {
           messenger.showSnackBar(
-            const SnackBar(content: Text('No shutdown command configured.')),
+            SnackBar(content: Text(l10n.tr('No shutdown command configured.'))),
           );
           return;
         }
         if (widget.device.shutdownConfirm) {
-          final confirmed = await _confirm('Shutdown ${widget.device.name}?');
+          final confirmed = await _confirm(
+            l10n.tr('Shutdown {name}?', {'name': widget.device.name}),
+          );
           if (!confirmed) {
             return;
           }
@@ -245,7 +266,9 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         await repo.sleepDevice(widget.device.id);
       } else if (action == _CardAction.reboot) {
         final confirmed = widget.device.shutdownConfirm
-            ? await _confirm('Reboot ${widget.device.name}?')
+            ? await _confirm(
+                context.l10n.tr('Reboot {name}?', {'name': widget.device.name}),
+              )
             : true;
         if (!confirmed) {
           return;
@@ -267,11 +290,11 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.tr('Cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Confirm'),
+              child: Text(context.l10n.tr('Confirm')),
             ),
           ],
         );
@@ -281,12 +304,13 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     return result ?? false;
   }
 
-  String _primaryActionLabel(DeviceStatus status) {
+  String _primaryActionLabel(BuildContext context, DeviceStatus status) {
+    final l10n = context.l10n;
     return switch (status) {
-      DeviceStatus.offline => 'Wake',
-      DeviceStatus.online => 'Shutdown',
-      DeviceStatus.pending => 'Pending',
-      DeviceStatus.unknown => 'Refresh',
+      DeviceStatus.offline => l10n.tr('Wake'),
+      DeviceStatus.online => l10n.tr('Shutdown'),
+      DeviceStatus.pending => l10n.tr('Pending'),
+      DeviceStatus.unknown => l10n.tr('Refresh'),
     };
   }
 }
@@ -312,11 +336,12 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final (color, label) = switch (status) {
-      DeviceStatus.online => (Colors.green, 'Online'),
-      DeviceStatus.offline => (Colors.red, 'Offline'),
-      DeviceStatus.pending => (Colors.orange, 'Pending'),
-      DeviceStatus.unknown => (Colors.grey, 'Unknown'),
+      DeviceStatus.online => (Colors.green, l10n.tr('Online')),
+      DeviceStatus.offline => (Colors.red, l10n.tr('Offline')),
+      DeviceStatus.pending => (Colors.orange, l10n.tr('Pending')),
+      DeviceStatus.unknown => (Colors.grey, l10n.tr('Unknown')),
     };
 
     return Chip(

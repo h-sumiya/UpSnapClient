@@ -2,8 +2,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/localization/app_localizations.dart';
+import '../../../core/storage/client_preferences.dart';
 import '../../../core/utils/cron_utils.dart';
 import '../../../core/utils/error_message.dart';
+import '../application/client_preferences_controller.dart';
 import '../../../features/session/application/session_controller.dart';
 import '../../../shared/widgets/section_card.dart';
 import '../data/settings_repository.dart';
@@ -49,6 +52,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).languageCode;
+    final clientPreferences = ref.watch(clientPreferencesControllerProvider);
     final session = ref.watch(sessionControllerProvider);
     final isSuperuser = session.account?.isSuperuser == true;
 
@@ -60,13 +66,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         SectionCard(
-          title: 'Connection',
-          subtitle: 'Change the target UpSnap server for this client.',
+          title: l10n.tr('App'),
+          subtitle: l10n.tr('This changes only this client app.'),
+          child: Column(
+            children: [
+              DropdownButtonFormField<AppThemePreference>(
+                initialValue: clientPreferences.themePreference,
+                decoration: InputDecoration(labelText: l10n.tr('Theme')),
+                items: AppThemePreference.values
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(_themePreferenceLabel(value, l10n)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  ref
+                      .read(clientPreferencesControllerProvider.notifier)
+                      .updateThemePreference(value);
+                },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<AppLanguagePreference>(
+                initialValue: clientPreferences.languagePreference,
+                decoration: InputDecoration(labelText: l10n.tr('Language')),
+                items: AppLanguagePreference.values
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(_languagePreferenceLabel(value, l10n)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  ref
+                      .read(clientPreferencesControllerProvider.notifier)
+                      .updateLanguagePreference(value);
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SectionCard(
+          title: l10n.tr('Connection'),
+          subtitle: l10n.tr('Change the target UpSnap server for this client.'),
           child: Column(
             children: [
               TextField(
                 controller: _serverUrlController,
-                decoration: const InputDecoration(labelText: 'Server URL'),
+                decoration: InputDecoration(labelText: l10n.tr('Server URL')),
               ),
               const SizedBox(height: 16),
               Align(
@@ -74,7 +130,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: FilledButton.icon(
                   onPressed: _busy ? null : _saveServerUrl,
                   icon: const Icon(Icons.cloud_done_rounded),
-                  label: const Text('Save connection'),
+                  label: Text(l10n.tr('Save connection')),
                 ),
               ),
             ],
@@ -85,21 +141,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _privateSettings != null) ...[
           const SizedBox(height: 16),
           SectionCard(
-            title: 'Server',
-            subtitle: 'Manage server-wide settings from the mobile client.',
+            title: l10n.tr('Server'),
+            subtitle: l10n.tr(
+              'Manage server-wide settings from the mobile client.',
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 TextField(
                   controller: _websiteTitleController,
-                  decoration: const InputDecoration(labelText: 'Website title'),
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Website title'),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _intervalController,
                   decoration: InputDecoration(
-                    labelText: 'Ping interval cron',
-                    helperText: cronPreview(_intervalController.text),
+                    labelText: l10n.tr('Ping interval cron'),
+                    helperText: cronPreview(
+                      _intervalController.text,
+                      locale: locale,
+                    ),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -107,13 +170,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 SwitchListTile(
                   value: _lazyPing,
                   onChanged: (value) => setState(() => _lazyPing = value),
-                  title: const Text('Enable lazy ping'),
+                  title: Text(l10n.tr('Enable lazy ping')),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _scanRangeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Network scan range',
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Network scan range'),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -125,13 +188,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onPressed: _busy ? null : _pickFavicon,
                       icon: const Icon(Icons.image_rounded),
                       label: Text(
-                        _favicon == null ? 'Select favicon' : _favicon!.name,
+                        _favicon == null
+                            ? l10n.tr('Select favicon')
+                            : _favicon!.name,
                       ),
                     ),
                     FilledButton.icon(
                       onPressed: _busy ? null : _saveServerSettings,
                       icon: const Icon(Icons.save_rounded),
-                      label: const Text('Save server settings'),
+                      label: Text(l10n.tr('Save server settings')),
                     ),
                   ],
                 ),
@@ -204,6 +269,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _saveServerSettings() async {
+    final l10n = context.l10n;
     final publicSettings = _publicSettings;
     final privateSettings = _privateSettings;
     if (publicSettings == null || privateSettings == null) {
@@ -218,7 +284,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _intervalController.text.trim(),
       );
       if (!valid) {
-        _show('Ping interval cron is invalid.');
+        _show(l10n.tr('Ping interval cron is invalid.'));
         return;
       }
 
@@ -250,7 +316,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _privateSettings = updatedPrivate;
         _favicon = null;
       });
-      _show('Settings saved.');
+      _show(l10n.tr('Settings saved.'));
     } catch (error) {
       _show(errorMessage(error));
     } finally {
@@ -267,5 +333,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _themePreferenceLabel(
+    AppThemePreference value,
+    AppLocalizations l10n,
+  ) {
+    return switch (value) {
+      AppThemePreference.system => l10n.tr('Follow system'),
+      AppThemePreference.light => l10n.tr('Light'),
+      AppThemePreference.dark => l10n.tr('Dark'),
+    };
+  }
+
+  String _languagePreferenceLabel(
+    AppLanguagePreference value,
+    AppLocalizations l10n,
+  ) {
+    return switch (value) {
+      AppLanguagePreference.system => l10n.tr('Follow system'),
+      AppLanguagePreference.english => l10n.tr('English'),
+      AppLanguagePreference.japanese => l10n.tr('Japanese'),
+    };
   }
 }

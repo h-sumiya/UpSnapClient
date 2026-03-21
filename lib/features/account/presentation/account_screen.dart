@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/utils/error_message.dart';
 import '../../../shared/widgets/avatar_image.dart';
 import '../../../shared/widgets/section_card.dart';
@@ -38,17 +39,18 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final session = ref.watch(sessionControllerProvider);
     final account = session.account;
     if (account == null) {
-      return const Center(child: Text('No active account.'));
+      return Center(child: Text(l10n.tr('No active account.')));
     }
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         SectionCard(
-          title: 'Profile',
+          title: l10n.tr('Profile'),
           subtitle: account.isSuperuser
               ? account.email ?? account.displayName
               : account.displayName,
@@ -67,7 +69,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       Text(
-                        account.isSuperuser ? 'Admin account' : 'User account',
+                        l10n.tr(
+                          account.isSuperuser
+                              ? 'Admin account'
+                              : 'User account',
+                        ),
                       ),
                     ],
                   ),
@@ -75,7 +81,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Avatar',
+                l10n.tr('Avatar'),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
@@ -115,7 +121,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.save_outlined),
-                  label: const Text('Save account'),
+                  label: Text(l10n.tr('Save account')),
                 ),
               ),
             ],
@@ -123,16 +129,16 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         ),
         const SizedBox(height: 16),
         SectionCard(
-          title: 'Change password',
-          subtitle: 'Update the password for the current account.',
+          title: l10n.tr('Change password'),
+          subtitle: l10n.tr('Update the password for the current account.'),
           child: Column(
             children: [
               if (!account.isSuperuser) ...[
                 TextField(
                   controller: _oldPasswordController,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Current password',
+                  decoration: InputDecoration(
+                    labelText: l10n.tr('Current password'),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -140,14 +146,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               TextField(
                 controller: _newPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'New password'),
+                decoration: InputDecoration(labelText: l10n.tr('New password')),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _confirmPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm password',
+                decoration: InputDecoration(
+                  labelText: l10n.tr('Confirm password'),
                 ),
               ),
               const SizedBox(height: 20),
@@ -161,7 +167,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.lock_reset_rounded),
-                  label: const Text('Change password'),
+                  label: Text(l10n.tr('Change password')),
                 ),
               ),
             ],
@@ -173,6 +179,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
   Future<void> _saveAvatar() async {
     final account = ref.read(sessionControllerProvider).account;
+    final accountSavedMessage = context.l10n.tr('Account saved.');
     if (account == null) {
       return;
     }
@@ -187,7 +194,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             avatar: _avatar,
           );
       await ref.read(sessionControllerProvider.notifier).refresh();
-      _show('Account saved.');
+      _show(accountSavedMessage);
     } catch (error) {
       _show(errorMessage(error));
     } finally {
@@ -199,12 +206,18 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
   Future<void> _changePassword() async {
     final account = ref.read(sessionControllerProvider).account;
+    final passwordsDoNotMatchMessage = context.l10n.tr(
+      'Passwords do not match.',
+    );
+    final passwordChangedMessage = context.l10n.tr(
+      'Password changed. Please sign in again.',
+    );
     if (account == null) {
       return;
     }
 
     if (_newPasswordController.text != _confirmPasswordController.text) {
-      _show('Passwords do not match.');
+      _show(passwordsDoNotMatchMessage);
       return;
     }
 
@@ -220,7 +233,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             passwordConfirm: _confirmPasswordController.text,
           );
       await ref.read(sessionControllerProvider.notifier).logout();
-      _show('Password changed. Please sign in again.');
+      _show(passwordChangedMessage);
     } catch (error) {
       _show(errorMessage(error));
     } finally {

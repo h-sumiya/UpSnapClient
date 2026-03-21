@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/localization/app_localizations.dart';
 import '../../domain/device_models.dart';
 
 class DevicePortEditor extends StatelessWidget {
@@ -16,6 +17,7 @@ class DevicePortEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Card(
       color: Theme.of(context).colorScheme.surfaceContainerLowest,
       child: Padding(
@@ -27,7 +29,11 @@ class DevicePortEditor extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    port.id == null ? 'New port' : 'Port ${port.number}',
+                    port.id == null
+                        ? l10n.tr('New port')
+                        : l10n.tr('Port {number}', {
+                            'number': port.number.toString(),
+                          }),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -40,14 +46,14 @@ class DevicePortEditor extends StatelessWidget {
             const SizedBox(height: 12),
             TextFormField(
               initialValue: port.name,
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: InputDecoration(labelText: l10n.tr('Name')),
               onChanged: (value) => onChanged(port.copyWith(name: value)),
             ),
             const SizedBox(height: 12),
             TextFormField(
               initialValue: port.number.toString(),
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Port number'),
+              decoration: InputDecoration(labelText: l10n.tr('Port number')),
               onChanged: (value) {
                 onChanged(port.copyWith(number: int.tryParse(value) ?? 1));
               },
@@ -55,7 +61,7 @@ class DevicePortEditor extends StatelessWidget {
             const SizedBox(height: 12),
             TextFormField(
               initialValue: port.link,
-              decoration: const InputDecoration(labelText: 'Link'),
+              decoration: InputDecoration(labelText: l10n.tr('Link')),
               onChanged: (value) => onChanged(port.copyWith(link: value)),
             ),
           ],

@@ -4,22 +4,31 @@ class AppTheme {
   const AppTheme._();
 
   static ThemeData light() {
-    const seed = Color(0xFF0F766E);
+    return _buildTheme(Brightness.light);
+  }
 
+  static ThemeData dark() {
+    return _buildTheme(Brightness.dark);
+  }
+
+  static ThemeData _buildTheme(Brightness brightness) {
+    const seed = Color(0xFF0F766E);
+    final isDark = brightness == Brightness.dark;
     final scheme = ColorScheme.fromSeed(
       seedColor: seed,
-      brightness: Brightness.light,
-      primary: const Color(0xFF0F766E),
-      secondary: const Color(0xFF155E75),
-      surface: const Color(0xFFF3F7F6),
+      brightness: brightness,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: const Color(0xFFF3F7F6),
+      scaffoldBackgroundColor: isDark
+          ? const Color(0xFF0B1413)
+          : const Color(0xFFF3F7F6),
       appBarTheme: AppBarTheme(
-        backgroundColor: scheme.surface,
+        backgroundColor: isDark
+            ? const Color(0xFF12201F)
+            : scheme.surfaceContainerLowest,
         foregroundColor: scheme.onSurface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -27,12 +36,14 @@ class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
-        color: Colors.white,
+        color: isDark ? const Color(0xFF12201F) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: isDark
+            ? scheme.surfaceContainerHigh
+            : scheme.surfaceContainerLowest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
@@ -52,7 +63,7 @@ class AppTheme {
       ),
       navigationDrawerTheme: NavigationDrawerThemeData(
         tileHeight: 52,
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF12201F) : Colors.white,
         indicatorColor: scheme.primaryContainer,
       ),
       chipTheme: ChipThemeData(

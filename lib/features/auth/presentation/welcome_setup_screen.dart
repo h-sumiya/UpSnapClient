@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/utils/error_message.dart';
 import '../../../shared/widgets/upsnap_logo.dart';
 import '../../session/application/session_controller.dart';
@@ -29,6 +30,7 @@ class _WelcomeSetupScreenState extends ConsumerState<WelcomeSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final settings = ref.watch(sessionControllerProvider).publicSettings;
 
     return Scaffold(
@@ -49,27 +51,31 @@ class _WelcomeSetupScreenState extends ConsumerState<WelcomeSetupScreen> {
                       const Center(child: UpSnapLogo(size: 96)),
                       const SizedBox(height: 16),
                       Text(
-                        'Set up ${settings?.effectiveTitle ?? 'UpSnap'}',
+                        l10n.tr('Set up {appName}', {
+                          'appName': settings?.effectiveTitle ?? 'UpSnap',
+                        }),
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Create the initial admin account to complete the first-run setup.',
+                        l10n.tr(
+                          'Create the initial admin account to complete the first-run setup.',
+                        ),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Admin email',
+                        decoration: InputDecoration(
+                          labelText: l10n.tr('Admin email'),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Required';
+                            return l10n.tr('Required');
                           }
                           if (!value.contains('@')) {
-                            return 'Enter a valid email address';
+                            return l10n.tr('Enter a valid email address');
                           }
                           return null;
                         },
@@ -78,12 +84,12 @@ class _WelcomeSetupScreenState extends ConsumerState<WelcomeSetupScreen> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
+                        decoration: InputDecoration(
+                          labelText: l10n.tr('Password'),
                         ),
                         validator: (value) {
                           if (value == null || value.length < 10) {
-                            return 'At least 10 characters';
+                            return l10n.tr('At least 10 characters');
                           }
                           return null;
                         },
@@ -92,12 +98,12 @@ class _WelcomeSetupScreenState extends ConsumerState<WelcomeSetupScreen> {
                       TextFormField(
                         controller: _confirmController,
                         obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Confirm password',
+                        decoration: InputDecoration(
+                          labelText: l10n.tr('Confirm password'),
                         ),
                         validator: (value) {
                           if (value != _passwordController.text) {
-                            return 'Passwords do not match';
+                            return l10n.tr('Passwords do not match');
                           }
                           return null;
                         },
@@ -116,7 +122,9 @@ class _WelcomeSetupScreenState extends ConsumerState<WelcomeSetupScreen> {
                                 )
                               : const Icon(Icons.arrow_forward_rounded),
                           label: Text(
-                            _busy ? 'Creating admin…' : 'Create admin',
+                            l10n.tr(
+                              _busy ? 'Creating admin...' : 'Create admin',
+                            ),
                           ),
                         ),
                       ),
@@ -129,7 +137,7 @@ class _WelcomeSetupScreenState extends ConsumerState<WelcomeSetupScreen> {
                                 .read(sessionControllerProvider.notifier)
                                 .showServerConfiguration();
                           },
-                          child: const Text('Change server'),
+                          child: Text(l10n.tr('Change server')),
                         ),
                       ),
                     ],

@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/localization/app_localizations.dart';
 import '../../../core/utils/error_message.dart';
 import '../../session/application/session_controller.dart';
 import '../data/devices_repository.dart';
@@ -45,6 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final account = ref.watch(authAccountProvider);
     final permission = ref.watch(permissionProvider);
     final canCreate =
@@ -61,7 +63,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             Text(_error!),
             const SizedBox(height: 12),
-            FilledButton(onPressed: _loadDevices, child: const Text('Retry')),
+            FilledButton(
+              onPressed: _loadDevices,
+              child: Text(l10n.tr('Retry')),
+            ),
           ],
         ),
       );
@@ -91,7 +96,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search_rounded),
-                    labelText: 'Search devices',
+                    labelText: l10n.tr('Search devices'),
                     suffixIcon: _searchController.text.isEmpty
                         ? null
                         : IconButton(
@@ -105,15 +110,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               SegmentedButton<_DeviceSortField>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: _DeviceSortField.name,
-                    label: Text('Name'),
+                    label: Text(l10n.tr('Name')),
                     icon: Icon(Icons.sort_by_alpha_rounded),
                   ),
                   ButtonSegment(
                     value: _DeviceSortField.ip,
-                    label: Text('IP'),
+                    label: Text(l10n.tr('IP')),
                     icon: Icon(Icons.numbers_rounded),
                   ),
                 ],
@@ -127,10 +132,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 onSelected: (value) {
                   setState(() => _groupByCollection = value);
                 },
-                label: const Text('Group by collections'),
+                label: Text(l10n.tr('Group by collections')),
               ),
               IconButton(
-                tooltip: 'Refresh',
+                tooltip: l10n.tr('Refresh'),
                 onPressed: _loadDevices,
                 icon: const Icon(Icons.refresh_rounded),
               ),
@@ -248,6 +253,7 @@ class _GroupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.only(top: 20),
       child: Column(
@@ -264,7 +270,7 @@ class _GroupSection extends StatelessWidget {
               FilledButton.tonalIcon(
                 onPressed: onWakeGroup,
                 icon: const Icon(Icons.power_rounded),
-                label: const Text('Wake group'),
+                label: Text(l10n.tr('Wake group')),
               ),
             ],
           ),
@@ -335,6 +341,7 @@ class _EmptyDevicesState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -348,8 +355,10 @@ class _EmptyDevicesState extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               canCreate
-                  ? 'No devices yet. Use the button below to add your first machine.'
-                  : 'No devices are available for your account.',
+                  ? l10n.tr(
+                      'No devices yet. Use the button below to add your first machine.',
+                    )
+                  : l10n.tr('No devices are available for your account.'),
               textAlign: TextAlign.center,
             ),
           ],
