@@ -1,5 +1,5 @@
 name: upsnap_client
-description: "A new Flutter project."
+description: "Flutter client for UpSnap."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -34,6 +34,17 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  flutter_riverpod: ^3.3.1
+  pocketbase: ^0.23.2
+  shared_preferences: ^2.5.4
+  intl: ^0.20.2
+  timeago: ^3.7.1
+  url_launcher: ^6.3.2
+  file_picker: ^10.3.10
+  flutter_svg: ^2.2.4
+  collection: ^1.19.1
+  http: ^1.6.0
+  cron_parser: ^0.5.0
 
 dev_dependencies:
   flutter_test:
@@ -56,6 +67,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/gopher.svg
+    - assets/avatars/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
