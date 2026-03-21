@@ -46,3 +46,6 @@ app.*.map.json
 
 # mise
 mise.local.toml
+
+# agents
+AGENTS.md
