@@ -45,16 +45,30 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         permission?.canUpdate(widget.device.id) == true;
     final widgetService = ref.watch(deviceWidgetServiceProvider);
     final canPinWidget = canPower && widgetService.isSupportedPlatform;
+    final canTogglePower =
+        canPower &&
+        (widget.device.status == DeviceStatus.online ||
+            widget.device.status == DeviceStatus.offline);
+    final statusColor = _statusColor(widget.device.status);
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _PowerIconButton(
+                  color: statusColor,
+                  isBusy: _busy,
+                  onTap: canTogglePower && !_busy
+                      ? _handlePrimaryPowerAction
+                      : null,
+                  tooltip: _powerActionTooltip(context, widget.device.status),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,10 +84,9 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                     ],
                   ),
                 ),
-                _StatusBadge(status: widget.device.status),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -88,7 +101,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
               ],
             ),
             if (widget.device.ports.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
@@ -112,7 +125,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
             if (widget.device.wakeCronEnabled ||
                 widget.device.shutdownCronEnabled ||
                 widget.device.password.trim().isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
@@ -137,7 +150,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                 ],
               ),
             ],
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
@@ -151,53 +164,14 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
-                if (canPower)
-                  FilledButton.tonalIcon(
-                    onPressed: _busy ? null : _handlePrimaryPowerAction,
-                    icon: _busy
-                        ? const SizedBox.square(
-                            dimension: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.power_settings_new_rounded),
-                    label: Text(
-                      _primaryActionLabel(context, widget.device.status),
-                    ),
-                  ),
-                if (canPinWidget) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: l10n.tr('Add widget'),
-                    onPressed: _busy ? null : _pinWidget,
-                    icon: const Icon(Icons.widgets_rounded),
-                  ),
-                ],
                 const SizedBox(width: 8),
-                PopupMenuButton<_CardAction>(
+                _CardMenuButton(
+                  canEdit: canEdit,
+                  canPinWidget: canPinWidget,
+                  canPower: canPower,
+                  isOnline: widget.device.status == DeviceStatus.online,
                   onSelected: (value) =>
                       _handleMenuAction(value, canEdit, canPower),
-                  itemBuilder: (context) {
-                    final l10n = context.l10n;
-                    return [
-                      if (canEdit)
-                        PopupMenuItem(
-                          value: _CardAction.edit,
-                          child: Text(l10n.tr('Edit device')),
-                        ),
-                      if (canPower &&
-                          widget.device.status == DeviceStatus.online)
-                        PopupMenuItem(
-                          value: _CardAction.sleep,
-                          child: Text(l10n.tr('Sleep')),
-                        ),
-                      if (canPower &&
-                          widget.device.status == DeviceStatus.online)
-                        PopupMenuItem(
-                          value: _CardAction.reboot,
-                          child: Text(l10n.tr('Reboot')),
-                        ),
-                    ];
-                  },
                 ),
               ],
             ),
@@ -261,6 +235,11 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     bool canEdit,
     bool canPower,
   ) async {
+    if (action == _CardAction.addWidget) {
+      await _pinWidget();
+      return;
+    }
+
     if (action == _CardAction.edit && canEdit) {
       await widget.onEditRequested();
       return;
@@ -347,18 +326,18 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     }
   }
 
-  String _primaryActionLabel(BuildContext context, DeviceStatus status) {
+  String _powerActionTooltip(BuildContext context, DeviceStatus status) {
     final l10n = context.l10n;
     return switch (status) {
       DeviceStatus.offline => l10n.tr('Wake'),
       DeviceStatus.online => l10n.tr('Shutdown'),
       DeviceStatus.pending => l10n.tr('Pending'),
-      DeviceStatus.unknown => l10n.tr('Refresh'),
+      DeviceStatus.unknown => l10n.tr('Unknown'),
     };
   }
 }
 
-enum _CardAction { edit, sleep, reboot }
+enum _CardAction { addWidget, edit, sleep, reboot }
 
 class _InfoChip extends StatelessWidget {
   const _InfoChip({required this.icon, required this.label});
@@ -372,26 +351,112 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
+class _CardMenuButton extends StatelessWidget {
+  const _CardMenuButton({
+    required this.canEdit,
+    required this.canPinWidget,
+    required this.canPower,
+    required this.isOnline,
+    required this.onSelected,
+  });
 
-  final DeviceStatus status;
+  final bool canEdit;
+  final bool canPinWidget;
+  final bool canPower;
+  final bool isOnline;
+  final ValueChanged<_CardAction> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final (color, label) = switch (status) {
-      DeviceStatus.online => (Colors.green, l10n.tr('Online')),
-      DeviceStatus.offline => (Colors.red, l10n.tr('Offline')),
-      DeviceStatus.pending => (Colors.orange, l10n.tr('Pending')),
-      DeviceStatus.unknown => (Colors.grey, l10n.tr('Unknown')),
-    };
+    final hasActions = canEdit || canPinWidget || (canPower && isOnline);
+    if (!hasActions) {
+      return Icon(
+        Icons.more_vert_rounded,
+        color: Theme.of(context).disabledColor,
+      );
+    }
 
-    return Chip(
-      label: Text(label),
-      backgroundColor: color.withValues(alpha: 0.12),
-      side: BorderSide.none,
-      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+    return PopupMenuButton<_CardAction>(
+      onSelected: onSelected,
+      itemBuilder: (context) {
+        final l10n = context.l10n;
+        return [
+          if (canPinWidget)
+            PopupMenuItem(
+              value: _CardAction.addWidget,
+              child: Text(l10n.tr('Add widget')),
+            ),
+          if (canEdit)
+            PopupMenuItem(
+              value: _CardAction.edit,
+              child: Text(l10n.tr('Edit device')),
+            ),
+          if (canPower && isOnline)
+            PopupMenuItem(
+              value: _CardAction.sleep,
+              child: Text(l10n.tr('Sleep')),
+            ),
+          if (canPower && isOnline)
+            PopupMenuItem(
+              value: _CardAction.reboot,
+              child: Text(l10n.tr('Reboot')),
+            ),
+        ];
+      },
+      icon: const Icon(Icons.more_vert_rounded),
     );
   }
+}
+
+class _PowerIconButton extends StatelessWidget {
+  const _PowerIconButton({
+    required this.color,
+    required this.isBusy,
+    required this.onTap,
+    required this.tooltip,
+  });
+
+  final Color color;
+  final bool isBusy;
+  final VoidCallback? onTap;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 40,
+        height: 40,
+        child: Material(
+          color: color.withValues(alpha: 0.12),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: Center(
+              child: isBusy
+                  ? SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                      ),
+                    )
+                  : Icon(Icons.power_settings_new_rounded, color: color),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Color _statusColor(DeviceStatus status) {
+  return switch (status) {
+    DeviceStatus.online => Colors.green,
+    DeviceStatus.offline => Colors.red,
+    DeviceStatus.pending => Colors.orange,
+    DeviceStatus.unknown => Colors.grey,
+  };
 }

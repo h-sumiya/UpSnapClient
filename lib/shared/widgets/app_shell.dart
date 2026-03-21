@@ -19,6 +19,7 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   int _selectedIndex = 0;
+  final _homeScreenController = HomeScreenController();
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +32,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       _AppDestination(
         title: l10n.tr('Devices'),
         icon: Icons.computer_rounded,
-        builder: HomeScreen.new,
+        builder: () => HomeScreen(controller: _homeScreenController),
       ),
       if (account?.isSuperuser == true)
         _AppDestination(
@@ -56,7 +57,17 @@ class _AppShellState extends ConsumerState<AppShell> {
         account?.isSuperuser == true || permission?.canCreateDevices == true;
 
     return Scaffold(
-      appBar: AppBar(title: Text(selected.title)),
+      appBar: AppBar(
+        title: Text(selected.title),
+        actions: [
+          if (_selectedIndex == 0)
+            IconButton(
+              tooltip: l10n.tr('Refresh'),
+              onPressed: () => _homeScreenController.refresh(),
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+        ],
+      ),
       drawer: Drawer(
         child: SafeArea(
           child: Column(

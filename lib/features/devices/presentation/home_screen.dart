@@ -13,8 +13,31 @@ import '../domain/device_models.dart';
 import 'device_editor_screen.dart';
 import 'widgets/device_card.dart';
 
+class HomeScreenController {
+  Future<void> Function()? _refresh;
+
+  void attach(Future<void> Function() refresh) {
+    _refresh = refresh;
+  }
+
+  void detach() {
+    _refresh = null;
+  }
+
+  Future<void> refresh() async {
+    final refresh = _refresh;
+    if (refresh != null) {
+      await refresh();
+    }
+  }
+
+  bool get isAttached => _refresh != null;
+}
+
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.controller});
+
+  final HomeScreenController? controller;
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -36,13 +59,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.controller?.attach(_loadDevices);
     unawaited(_loadDevices());
     _startPolling();
   }
 
   @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.detach();
+      widget.controller?.attach(_loadDevices);
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.controller?.detach();
     _searchController.dispose();
     _stopPolling();
     super.dispose();
@@ -146,17 +180,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   setState(() => _sortField = value.first);
                 },
               ),
-              FilterChip(
-                selected: _groupByCollection,
+              PopupMenuButton<_HomeAction>(
                 onSelected: (value) {
-                  setState(() => _groupByCollection = value);
+                  if (value == _HomeAction.toggleGroupByCollection) {
+                    setState(() => _groupByCollection = !_groupByCollection);
+                  }
                 },
-                label: Text(l10n.tr('Group by collections')),
-              ),
-              IconButton(
-                tooltip: l10n.tr('Refresh'),
-                onPressed: _loadDevices,
-                icon: const Icon(Icons.refresh_rounded),
+                itemBuilder: (context) {
+                  return [
+                    CheckedPopupMenuItem(
+                      value: _HomeAction.toggleGroupByCollection,
+                      checked: _groupByCollection,
+                      child: Text(l10n.tr('Group by collections')),
+                    ),
+                  ];
+                },
+                icon: const Icon(Icons.more_vert_rounded),
               ),
             ],
           ),
@@ -273,6 +312,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
 enum _DeviceSortField { name, ip }
 
+enum _HomeAction { toggleGroupByCollection }
+
 class _GroupSection extends StatelessWidget {
   const _GroupSection({
     required this.groupName,
@@ -328,6 +369,7 @@ class _DeviceGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
+        const spacing = 16.0;
         final crossAxisCount = width >= 1400
             ? 4
             : width >= 1000
@@ -335,43 +377,42 @@ class _DeviceGrid extends StatelessWidget {
             : width >= 640
             ? 2
             : 1;
+        final itemWidth = crossAxisCount == 1
+            ? width
+            : (width - (spacing * (crossAxisCount - 1))) / crossAxisCount;
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: width >= 640 ? 1.14 : 0.98,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-          ),
-          itemCount: devices.length,
-          itemBuilder: (context, index) {
-            final device = devices[index];
-            return DeviceCard(
-              device: device,
-              onRefreshRequested: onRefresh,
-              onEditRequested: () async {
-                final container = ProviderScope.containerOf(
-                  context,
-                  listen: false,
-                );
-                final changed = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => DeviceEditorScreen(deviceId: device.id),
-                  ),
-                );
-                if (changed == true) {
-                  // Keep widget labels in sync after edits without
-                  // funneling Flutter data into the widget renderer.
-                  await container
-                      .read(deviceWidgetServiceProvider)
-                      .refreshWidgets();
-                  await onRefresh();
-                }
-              },
-            );
-          },
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final device in devices)
+              SizedBox(
+                width: itemWidth,
+                child: DeviceCard(
+                  device: device,
+                  onRefreshRequested: onRefresh,
+                  onEditRequested: () async {
+                    final container = ProviderScope.containerOf(
+                      context,
+                      listen: false,
+                    );
+                    final changed = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => DeviceEditorScreen(deviceId: device.id),
+                      ),
+                    );
+                    if (changed == true) {
+                      // Keep widget labels in sync after edits without
+                      // funneling Flutter data into the widget renderer.
+                      await container
+                          .read(deviceWidgetServiceProvider)
+                          .refreshWidgets();
+                      await onRefresh();
+                    }
+                  },
+                ),
+              ),
+          ],
         );
       },
     );

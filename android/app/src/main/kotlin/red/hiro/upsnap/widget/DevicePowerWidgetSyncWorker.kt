@@ -52,6 +52,8 @@ class DevicePowerWidgetSyncWorker(
         val repository = DevicePowerWidgetRepository(applicationContext)
         val result = runCatching { repository.fetchSnapshots(ids) }
         result.onSuccess { snapshots ->
+            val now = System.currentTimeMillis()
+            var shouldContinueActionPolling = false
             pairs.forEach { (glanceId, state) ->
                 val deviceId = state.deviceId
                 if (deviceId == null) {
@@ -64,25 +66,38 @@ class DevicePowerWidgetSyncWorker(
                         context = applicationContext,
                         glanceId = glanceId,
                         message = applicationContext.getString(R.string.widget_sync_error),
-                        fallbackStatus = DevicePowerStatus.UNKNOWN,
+                        fallbackStatus = state.fallbackStatusOnError(),
+                    )
+                } else if (state.shouldContinueActionPolling(now, snapshot.status)) {
+                    shouldContinueActionPolling = true
+                    DevicePowerWidgetState.refreshPendingSnapshot(
+                        context = applicationContext,
+                        glanceId = glanceId,
+                        snapshot = snapshot,
                     )
                 } else {
                     DevicePowerWidgetState.writeSnapshot(applicationContext, glanceId, snapshot)
                 }
             }
             DevicePowerWidget().updateAll(applicationContext)
+            if (shouldContinueActionPolling) {
+                DevicePowerWidgetSyncScheduler.enqueueActionPolling(
+                    context = applicationContext,
+                    delaySeconds = DevicePowerWidgetSyncScheduler.actionPollingIntervalSeconds,
+                )
+            }
         }.onFailure { error ->
             val message = when (error) {
                 is AuthRequiredException ->
                     applicationContext.getString(R.string.widget_sign_in_required)
                 else -> applicationContext.getString(R.string.widget_sync_error)
             }
-            pairs.forEach { (glanceId, _) ->
+            pairs.forEach { (glanceId, state) ->
                 DevicePowerWidgetState.markError(
                     context = applicationContext,
                     glanceId = glanceId,
                     message = message,
-                    fallbackStatus = DevicePowerStatus.UNKNOWN,
+                    fallbackStatus = state.fallbackStatusOnError(),
                 )
             }
             DevicePowerWidget().updateAll(applicationContext)
@@ -95,6 +110,9 @@ class DevicePowerWidgetSyncWorker(
 object DevicePowerWidgetSyncScheduler {
     private const val periodicWorkName = "device_power_widget_periodic_sync"
     private const val immediateWorkName = "device_power_widget_immediate_sync"
+    const val actionPollingWindowMillis: Long = 10 * 60 * 1000
+    private const val actionPollingInitialDelaySeconds = 6L
+    const val actionPollingIntervalSeconds = 15L
 
     fun ensurePeriodic(context: Context) {
         if (!hasWidgets(context)) {
@@ -118,6 +136,13 @@ object DevicePowerWidgetSyncScheduler {
     }
 
     fun enqueueDelayed(context: Context, delaySeconds: Long) {
+        enqueue(context, delaySeconds = delaySeconds)
+    }
+
+    fun enqueueActionPolling(
+        context: Context,
+        delaySeconds: Long = actionPollingInitialDelaySeconds,
+    ) {
         enqueue(context, delaySeconds = delaySeconds)
     }
 
