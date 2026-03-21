@@ -48,6 +48,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -112,13 +113,17 @@ internal data class StoredWidgetDevice(
         if (actionPollingDeadlineAt <= now) {
             return false
         }
-
         val minimumPollingEndsAt = actionPollingStartedAt +
             DevicePowerWidgetSyncScheduler.actionPollingMinimumDurationMillis
         return now < minimumPollingEndsAt || observedStatus != targetStatus
     }
 
-    fun fallbackStatusOnError(): DevicePowerStatus = actionPollingSourceStatus ?: status
+    fun fallbackStatusOnError(): DevicePowerStatus =
+        if (status != DevicePowerStatus.PENDING) {
+            status
+        } else {
+            actionPollingSourceStatus ?: status
+        }
 }
 
 internal object DevicePowerWidgetState {
@@ -191,6 +196,22 @@ internal object DevicePowerWidgetState {
             prefs[deviceIdKey] = snapshot.id
             prefs[deviceNameKey] = snapshot.name
             prefs[statusKey] = DevicePowerStatus.PENDING.rawValue
+            prefs[shutdownSupportedKey] = snapshot.shutdownSupported
+            prefs[busyKey] = true
+            prefs.remove(errorKey)
+            prefs[lastSyncedAtKey] = System.currentTimeMillis()
+        }
+    }
+
+    suspend fun writeObservedSnapshotWhilePolling(
+        context: Context,
+        glanceId: GlanceId,
+        snapshot: WidgetSnapshot,
+    ) {
+        updateAppWidgetState(context, glanceId) { prefs: MutablePreferences ->
+            prefs[deviceIdKey] = snapshot.id
+            prefs[deviceNameKey] = snapshot.name
+            prefs[statusKey] = snapshot.status.rawValue
             prefs[shutdownSupportedKey] = snapshot.shutdownSupported
             prefs[busyKey] = true
             prefs.remove(errorKey)
@@ -287,7 +308,7 @@ internal object DevicePowerWidgetInstances {
 }
 
 class DevicePowerWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(DpSize(72.dp, 72.dp), DpSize(132.dp, 132.dp), DpSize(192.dp, 110.dp)))
+    override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
@@ -565,24 +586,48 @@ class ToggleDevicePowerAction : ActionCallback {
                 shutdownSupported = state.shutdownSupported,
             )
         }.onSuccess {
+            Log.d("DevicePowerWidget", "togglePower completed deviceId=$deviceId targetStatus=$targetStatus")
             DevicePowerWidgetSyncScheduler.enqueueImmediate(context)
         }.onFailure { error ->
-            val message = when (error) {
-                is ShutdownUnavailableException ->
-                    context.getString(R.string.widget_missing_shutdown)
-                is AuthRequiredException ->
-                    context.getString(R.string.widget_sign_in_required)
-                else -> context.getString(R.string.widget_sync_error)
+            when (error) {
+                is ShutdownUnavailableException,
+                is AuthRequiredException,
+                -> {
+                    val message = when (error) {
+                        is ShutdownUnavailableException ->
+                            context.getString(R.string.widget_missing_shutdown)
+                        is AuthRequiredException ->
+                            context.getString(R.string.widget_sign_in_required)
+                        else -> context.getString(R.string.widget_sync_error)
+                    }
+                    Log.w(
+                        "DevicePowerWidget",
+                        "togglePower failed deviceId=$deviceId targetStatus=$targetStatus message=$message",
+                        error,
+                    )
+                    targetGlanceIds.forEach { targetGlanceId ->
+                        DevicePowerWidgetState.markError(
+                            context = context,
+                            glanceId = targetGlanceId,
+                            message = message,
+                            fallbackStatus = state.status,
+                        )
+                    }
+                    DevicePowerWidget().updateAll(context)
+                }
+
+                else -> {
+                    Log.w(
+                        "DevicePowerWidget",
+                        "togglePower ambiguous failure deviceId=$deviceId targetStatus=$targetStatus; keep pending and continue polling",
+                        error,
+                    )
+                    DevicePowerWidgetSyncScheduler.enqueueActionPolling(
+                        context = context,
+                        delaySeconds = DevicePowerWidgetSyncScheduler.actionPollingIntervalSeconds,
+                    )
+                }
             }
-            targetGlanceIds.forEach { targetGlanceId ->
-                DevicePowerWidgetState.markError(
-                    context = context,
-                    glanceId = targetGlanceId,
-                    message = message,
-                    fallbackStatus = state.status,
-                )
-            }
-            DevicePowerWidget().updateAll(context)
         }
     }
 }
