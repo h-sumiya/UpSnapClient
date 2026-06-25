@@ -152,16 +152,20 @@ internal class DevicePowerWidgetRepository(context: Context) {
         )
     }
 
-    private fun ensureSession(): AuthSession {
+    private fun ensureSession(forceRenew: Boolean = false): AuthSession {
         val serverUrl = prefs.getString(serverUrlKey, null)?.trim().orEmpty()
         val rawAuth = prefs.getString(pbAuthKey, null)?.trim().orEmpty()
-        if (serverUrl.isBlank() || rawAuth.isBlank()) {
+        if (serverUrl.isBlank()) {
             Log.w("DevicePowerWidget", "ensureSession missing auth or server url")
             throw AuthRequiredException()
         }
 
+        if (rawAuth.isBlank()) {
+            return loginWithSavedCredentials(serverUrl)
+        }
+
         val authEnvelope = runCatching { JSONObject(rawAuth) }.getOrNull()
-            ?: throw AuthRequiredException()
+            ?: return loginWithSavedCredentials(serverUrl)
         val token = authEnvelope.optString("token")
         val model = authEnvelope.optJSONObject("model")
         val collection = model?.optString("collectionName")
@@ -176,11 +180,13 @@ internal class DevicePowerWidgetRepository(context: Context) {
             model = model ?: JSONObject(),
         )
         Log.d("DevicePowerWidget", "ensureSession collection=$collection tokenValid=${!isExpired(token)}")
-        if (!isExpired(token)) {
+        if (!forceRenew && !isExpired(token)) {
             return currentSession
         }
 
-        return refreshSession(currentSession)
+        return runCatching { refreshSession(currentSession) }.getOrElse {
+            loginWithSavedCredentials(serverUrl, collection)
+        }
     }
 
     private fun refreshSession(session: AuthSession): AuthSession {
@@ -222,13 +228,93 @@ internal class DevicePowerWidgetRepository(context: Context) {
         )
     }
 
+    private fun loginWithSavedCredentials(
+        serverUrl: String,
+        preferredCollection: String? = null,
+    ): AuthSession {
+        if (!prefs.getBoolean(rememberLoginKey, false)) {
+            throw AuthRequiredException()
+        }
+
+        val identity = prefs.getString(loginIdentityKey, null)?.trim().orEmpty()
+        val password = prefs.getString(loginPasswordKey, null).orEmpty()
+        if (identity.isBlank() || password.isEmpty()) {
+            throw AuthRequiredException()
+        }
+
+        val collections = listOfNotNull(preferredCollection?.takeIf(String::isNotBlank))
+            .plus(listOf("_superusers", "users"))
+            .distinct()
+        for (collection in collections) {
+            val session = runCatching {
+                authWithPassword(serverUrl, collection, identity, password)
+            }.getOrNull()
+            if (session != null) {
+                return session
+            }
+        }
+
+        prefs.edit().remove(pbAuthKey).apply()
+        throw AuthRequiredException()
+    }
+
+    private fun authWithPassword(
+        serverUrl: String,
+        collection: String,
+        identity: String,
+        password: String,
+    ): AuthSession {
+        val uri = Uri.parse(serverUrl).buildUpon()
+            .appendPath("api")
+            .appendPath("collections")
+            .appendPath(collection)
+            .appendPath("auth-with-password")
+            .build()
+
+        val body = JSONObject().apply {
+            put("identity", identity)
+            put("password", password)
+        }.toString()
+        val response = requestJsonObject(
+            method = "POST",
+            url = uri.toString(),
+            authToken = "",
+            retryOnUnauthorized = false,
+            body = body,
+        )
+
+        val token = response.optString("token")
+        val record = response.optJSONObject("record")
+            ?: response.optJSONObject("model")
+            ?: JSONObject()
+        if (token.isBlank()) {
+            throw AuthRequiredException()
+        }
+
+        val envelope = JSONObject().apply {
+            put("token", token)
+            put("model", record)
+        }
+        prefs.edit().putString(pbAuthKey, envelope.toString()).apply()
+
+        return AuthSession(
+            serverUrl = serverUrl,
+            token = token,
+            collection = record.optString("collectionName").takeIf(String::isNotBlank)
+                ?: record.optString("collectionId").takeIf(String::isNotBlank)
+                ?: collection,
+            model = record,
+        )
+    }
+
     private fun requestJsonObject(
         method: String,
         url: String,
         authToken: String,
         retryOnUnauthorized: Boolean,
+        body: String? = null,
     ): JSONObject {
-        val response = request(method, url, authToken, retryOnUnauthorized)
+        val response = request(method, url, authToken, retryOnUnauthorized, body)
         return if (response.isBlank()) JSONObject() else JSONObject(response)
     }
 
@@ -237,6 +323,7 @@ internal class DevicePowerWidgetRepository(context: Context) {
         url: String,
         authToken: String,
         retryOnUnauthorized: Boolean,
+        body: String? = null,
     ): String {
         Log.d("DevicePowerWidget", "request method=$method url=$url retryOnUnauthorized=$retryOnUnauthorized")
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -244,25 +331,35 @@ internal class DevicePowerWidgetRepository(context: Context) {
             connectTimeout = 5_000
             readTimeout = 8_000
             doInput = true
+            doOutput = body != null
             useCaches = false
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("Authorization", authToken)
+            if (authToken.isNotBlank()) {
+                setRequestProperty("Authorization", authToken)
+            }
             if (method != "GET") {
                 setRequestProperty("Content-Type", "application/json")
             }
         }
 
         return try {
+            if (body != null) {
+                connection.outputStream.use { output ->
+                    output.write(body.toByteArray(Charsets.UTF_8))
+                }
+            }
+
             val responseCode = connection.responseCode
             Log.d("DevicePowerWidget", "response code=$responseCode url=$url")
             if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
                 if (retryOnUnauthorized) {
-                    val current = ensureSession()
+                    val current = ensureSession(forceRenew = true)
                     return request(
                         method = method,
                         url = url,
                         authToken = current.token,
                         retryOnUnauthorized = false,
+                        body = body,
                     )
                 }
                 prefs.edit().remove(pbAuthKey).apply()
@@ -325,5 +422,8 @@ internal class DevicePowerWidgetRepository(context: Context) {
         const val sharedPrefsName = "FlutterSharedPreferences"
         const val serverUrlKey = "flutter.server_url"
         const val pbAuthKey = "flutter.pb_auth"
+        const val rememberLoginKey = "flutter.remember_login"
+        const val loginIdentityKey = "flutter.login_identity"
+        const val loginPasswordKey = "flutter.login_password"
     }
 }

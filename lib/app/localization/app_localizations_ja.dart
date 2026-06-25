@@ -114,6 +114,7 @@ const Map<String, String> appStringsJa = <String, String>{
   'Reboot {name}?': '{name} を再起動しますか？',
   'Replace scanned netmask': 'スキャン結果のネットマスクを置換',
   'Required': '必須です',
+  'Remember ID and password': 'ID とパスワードを記録',
   'Require authorization': '認証を必須にする',
   'Require shutdown confirmation': 'シャットダウン確認を必須にする',
   'Require wake confirmation': '起動確認を必須にする',

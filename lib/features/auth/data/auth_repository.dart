@@ -23,13 +23,17 @@ class AuthRepository {
   Future<void> login({
     required String identity,
     required String password,
+    PocketBase? client,
   }) async {
+    final activeClient = client ?? _client;
     try {
-      await _client
+      await activeClient
           .collection('_superusers')
           .authWithPassword(identity, password);
     } catch (_) {
-      await _client.collection('users').authWithPassword(identity, password);
+      await activeClient
+          .collection('users')
+          .authWithPassword(identity, password);
     }
   }
 

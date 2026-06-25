@@ -19,11 +19,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _identityController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _busy = false;
+  bool _rememberCredentials = false;
   late Future<List<AuthMethodProvider>> _providersFuture;
 
   @override
   void initState() {
     super.initState();
+    final sessionController = ref.read(sessionControllerProvider.notifier);
+    final savedCredentials = sessionController.savedLoginCredentials;
+    if (savedCredentials != null) {
+      _identityController.text = savedCredentials.identity;
+      _passwordController.text = savedCredentials.password;
+      _rememberCredentials = true;
+    } else {
+      _rememberCredentials = sessionController.rememberLogin;
+    }
     _providersFuture = ref.read(authRepositoryProvider).listOAuthProviders();
   }
 
@@ -86,7 +96,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             : null,
                         onFieldSubmitted: (_) => _login(),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 8),
+                      CheckboxListTile(
+                        value: _rememberCredentials,
+                        onChanged: _busy
+                            ? null
+                            : (value) {
+                                setState(
+                                  () => _rememberCredentials = value ?? false,
+                                );
+                              },
+                        title: Text(l10n.tr('Remember ID and password')),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                      const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
@@ -167,6 +192,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .login(
             identity: _identityController.text.trim(),
             password: _passwordController.text,
+            rememberCredentials: _rememberCredentials,
           );
     } catch (error) {
       if (!mounted) {

@@ -116,6 +116,7 @@ const Map<String, String> appStringsEn = <String, String>{
   'Reboot {name}?': 'Reboot {name}?',
   'Replace scanned netmask': 'Replace scanned netmask',
   'Required': 'Required',
+  'Remember ID and password': 'Remember ID and password',
   'Require authorization': 'Require authorization',
   'Require shutdown confirmation': 'Require shutdown confirmation',
   'Require wake confirmation': 'Require wake confirmation',

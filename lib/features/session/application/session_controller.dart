@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,10 +46,13 @@ bool shouldRestoreStoredAuth({
 
 class SessionController extends Notifier<AppSessionState> {
   AppPreferences? _preferences;
+  Timer? _authRenewalTimer;
   bool _initialized = false;
 
   @override
   AppSessionState build() {
+    ref.onDispose(() => _authRenewalTimer?.cancel());
+
     if (!_initialized) {
       _initialized = true;
       unawaited(_initialize());
@@ -56,6 +60,11 @@ class SessionController extends Notifier<AppSessionState> {
 
     return AppSessionState.loading();
   }
+
+  bool get rememberLogin => _preferences?.rememberLogin ?? false;
+
+  SavedLoginCredentials? get savedLoginCredentials =>
+      _preferences?.savedLoginCredentials;
 
   Future<void> _initialize() async {
     state = AppSessionState.loading();
@@ -84,6 +93,7 @@ class SessionController extends Notifier<AppSessionState> {
       await _preferences?.setServerUrl(normalizedUrl);
       if (!sameServer) {
         await _preferences?.clearPocketBaseAuth();
+        await _preferences?.clearLoginCredentials();
       }
 
       state = state.copyWith(
@@ -119,7 +129,9 @@ class SessionController extends Notifier<AppSessionState> {
   }
 
   Future<void> disconnect() async {
+    _cancelAuthRenewal();
     await _preferences?.clearPocketBaseAuth();
+    await _preferences?.clearLoginCredentials();
     await _preferences?.clearServerUrl();
     state = const AppSessionState(stage: SessionStage.serverConfig);
   }
@@ -144,15 +156,26 @@ class SessionController extends Notifier<AppSessionState> {
   Future<void> login({
     required String identity,
     required String password,
+    bool rememberCredentials = false,
   }) async {
     final repository = ref.read(authRepositoryProvider);
-    await repository.login(identity: identity, password: password);
+    final normalizedIdentity = identity.trim();
+    await repository.login(identity: normalizedIdentity, password: password);
+    if (rememberCredentials) {
+      await _preferences?.saveLoginCredentials(
+        identity: normalizedIdentity,
+        password: password,
+      );
+    } else {
+      await _preferences?.clearLoginCredentials();
+    }
     await refresh();
   }
 
   Future<void> loginWithOAuth(String providerName) async {
     final repository = ref.read(authRepositoryProvider);
     await repository.loginWithOAuth(providerName);
+    await _preferences?.clearLoginCredentials();
     await refresh();
   }
 
@@ -170,11 +193,15 @@ class SessionController extends Notifier<AppSessionState> {
     await refresh();
   }
 
-  Future<void> logout() async {
+  Future<void> logout({bool clearCredentials = true}) async {
+    _cancelAuthRenewal();
     final client = state.client;
     if (client != null) {
       client.authStore.clear();
       await _preferences?.clearPocketBaseAuth();
+    }
+    if (clearCredentials) {
+      await _preferences?.clearLoginCredentials();
     }
 
     state = state.copyWith(
@@ -202,6 +229,8 @@ class SessionController extends Notifier<AppSessionState> {
     required String serverUrl,
     required PublicSettings publicSettings,
   }) async {
+    _cancelAuthRenewal();
+
     if (!publicSettings.setupCompleted) {
       return AppSessionState(
         stage: SessionStage.welcome,
@@ -212,24 +241,10 @@ class SessionController extends Notifier<AppSessionState> {
       );
     }
 
-    if (!client.authStore.isValid || client.authStore.record == null) {
-      return AppSessionState(
-        stage: SessionStage.login,
-        client: client,
-        serverUrl: serverUrl,
-        publicSettings: publicSettings,
-        busy: false,
-      );
-    }
-
-    final repository = ref.read(authRepositoryProvider);
-
-    try {
-      await repository.refreshCurrentAuth(client);
-    } catch (_) {
+    final authenticated = await _restoreAuthentication(client);
+    if (!authenticated) {
       client.authStore.clear();
       await _preferences?.clearPocketBaseAuth();
-
       return AppSessionState(
         stage: SessionStage.login,
         client: client,
@@ -251,9 +266,12 @@ class SessionController extends Notifier<AppSessionState> {
     }
 
     final account = AuthAccount.fromRecord(record);
+    final repository = ref.read(authRepositoryProvider);
     final permission = account.isSuperuser
         ? null
         : await repository.fetchPermissionForUser(account.id, client: client);
+
+    _scheduleAuthRenewal(client);
 
     return AppSessionState(
       stage: SessionStage.authenticated,
@@ -264,5 +282,124 @@ class SessionController extends Notifier<AppSessionState> {
       permission: permission,
       busy: false,
     );
+  }
+
+  Future<bool> _restoreAuthentication(PocketBase client) async {
+    if (client.authStore.record == null) {
+      return _loginWithSavedCredentials(client);
+    }
+
+    if (client.authStore.isValid) {
+      try {
+        await ref.read(authRepositoryProvider).refreshCurrentAuth(client);
+        return client.authStore.record != null && client.authStore.isValid;
+      } catch (_) {
+        return _loginWithSavedCredentials(client);
+      }
+    }
+
+    return _loginWithSavedCredentials(client);
+  }
+
+  Future<bool> _loginWithSavedCredentials(PocketBase client) async {
+    final credentials = _preferences?.savedLoginCredentials;
+    if (credentials == null) {
+      return false;
+    }
+
+    try {
+      await ref
+          .read(authRepositoryProvider)
+          .login(
+            identity: credentials.identity,
+            password: credentials.password,
+            client: client,
+          );
+      return client.authStore.record != null && client.authStore.isValid;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _scheduleAuthRenewal(PocketBase client) {
+    _cancelAuthRenewal();
+    _authRenewalTimer = Timer(_authRenewalDelay(client.authStore.token), () {
+      if (state.client != client || state.stage != SessionStage.authenticated) {
+        return;
+      }
+
+      unawaited(_renewAuth(client));
+    });
+  }
+
+  void _cancelAuthRenewal() {
+    _authRenewalTimer?.cancel();
+    _authRenewalTimer = null;
+  }
+
+  Duration _authRenewalDelay(String token) {
+    final expiresAt = _jwtExpiresAt(token);
+    if (expiresAt == null) {
+      return const Duration(hours: 1);
+    }
+
+    final delay = expiresAt
+        .subtract(const Duration(minutes: 5))
+        .difference(DateTime.now());
+    return delay.isNegative || delay == Duration.zero
+        ? const Duration(seconds: 1)
+        : delay;
+  }
+
+  DateTime? _jwtExpiresAt(String token) {
+    final parts = token.split('.');
+    if (parts.length != 3) {
+      return null;
+    }
+
+    try {
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      );
+      if (payload is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final exp = payload['exp'];
+      final seconds = exp is int ? exp : int.tryParse(exp.toString());
+      if (seconds == null || seconds <= 0) {
+        return null;
+      }
+
+      return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _renewAuth(PocketBase client) async {
+    final serverUrl = state.serverUrl;
+    final publicSettings = state.publicSettings;
+    if (serverUrl == null || publicSettings == null) {
+      return;
+    }
+
+    try {
+      final nextState = await _buildConnectedState(
+        client: client,
+        serverUrl: serverUrl,
+        publicSettings: publicSettings,
+      );
+      if (state.client == client) {
+        state = nextState;
+      }
+    } catch (_) {
+      if (state.client == client && state.stage == SessionStage.authenticated) {
+        _authRenewalTimer = Timer(
+          const Duration(minutes: 5),
+          () => unawaited(_renewAuth(client)),
+        );
+      }
+    }
   }
 }
